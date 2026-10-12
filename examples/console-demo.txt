@@ -1,28 +1,28 @@
 
-Proxmox Inventory / Démonstration
+Proxmox Inventory
 ────────────────────────────────────────────────────────────────────────────────
-  Lecture seule | 12/10/2026 à 23:31:49 UTC
+  Lecture seule | 12/10/2026 à 23:33:40 UTC
   Données fictives — aucune connexion à un serveur.
 
 Vue d’ensemble
 ────────────────────────────────────────────────────────────────────────────────
-  1 nœud(s) • 3 invité(s) • 1 modèle(s)
-  2 actif(s) • 1 arrêté(s) • 0 autre(s)
+  1 Nœud(s) • 3 Invité(s) • 1 Modèle(s)
+  2 Actif(s) • 1 Arrêté(s) • 0 Autre(s)
 
 Nœuds
 ────────────────────────────────────────────────────────────────────────────────
 Nœud        État      CPU  RAM utilisée  RAM totale
 ──────────  ────────  ───  ────────────  ──────────
-pve-lab-01  en ligne  8    10.0 Gio      32.0 Gio
+pve-lab-01  En ligne  8    10.0 Gio      32.0 Gio
 
 Invités / pve-lab-01
 ────────────────────────────────────────────────────────────────────────────────
 ID    Type  Nom              État    vCPU  RAM      Disque*
 ────  ────  ───────────────  ──────  ────  ───────  ────────
-101   QEMU  vps-demo-01      actif   2     4.0 Gio  40.0 Gio
-102   QEMU  vps-demo-02      arrêté  2     2.0 Gio  20.0 Gio
-201   LXC   paymenter-demo   actif   2     2.0 Gio  16.0 Gio
-9000  QEMU  debian-template  modèle  2     2.0 Gio  8.0 Gio
+101   QEMU  vps-demo-01      Actif   2     4.0 Gio  40.0 Gio
+102   QEMU  vps-demo-02      Arrêté  2     2.0 Gio  20.0 Gio
+201   LXC   paymenter-demo   Actif   2     2.0 Gio  16.0 Gio
+9000  QEMU  debian-template  Modèle  2     2.0 Gio  8.0 Gio
 
 Notes
 ────────────────────────────────────────────────────────────────────────────────

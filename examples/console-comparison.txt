@@ -17,7 +17,7 @@ Invités
   Absent : 102
 Ressource  Champ  Avant    Après
 ─────────  ─────  ───────  ───────
-101        État   actif    arrêté
+101        État   Actif    Arrêté
 101        RAM    4.0 Gio  8.0 Gio
 
 Notes

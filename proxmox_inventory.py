@@ -287,7 +287,7 @@ def print_table(headers, rows):
                 if column == len(cells) - 1:
                     text = text.rstrip()
                 style = "1" if index == 0 else {"actif": "32", "en ligne": "32",
-                    "arrêté": "33", "hors ligne": "31", "inconnu": "33", "modèle": "35"}.get(row[column])
+                    "arrêté": "33", "hors ligne": "31", "inconnu": "33", "modèle": "35"}.get(row[column].casefold())
                 pieces.append(colorize(text, style) if style else text)
             print("  ".join(pieces).rstrip())
         if index == 0:
@@ -295,24 +295,24 @@ def print_table(headers, rows):
 
 
 def display_status(value):
-    return {"online": "en ligne", "offline": "hors ligne", "running": "actif",
-            "stopped": "arrêté", None: "inconnu"}.get(value, value)
+    return {"online": "En ligne", "offline": "Hors ligne", "running": "Actif",
+            "stopped": "Arrêté", None: "Inconnu"}.get(value, value)
 
 
 def print_summary(report, node=None, status=None):
-    print_heading("Proxmox Inventory / " + ("Démonstration" if report["mode"] == "demo" else "Collecte réelle"))
+    print_heading("Proxmox Inventory")
     print_note("Lecture seule | " + display_date(report["generated_at"]))
     if report["mode"] == "demo":
         print_note("Données fictives — aucune connexion à un serveur.")
     s = report["summary"]
     print_heading("Vue d’ensemble")
-    print_note(f"{s['nodes']} nœud(s) • {s['guests']} invité(s) • {s['templates']} modèle(s)")
-    print_note(f"{s['running']} actif(s) • {s['stopped']} arrêté(s) • {s['other_states']} autre(s)")
+    print_note(f"{s['nodes']} Nœud(s) • {s['guests']} Invité(s) • {s['templates']} Modèle(s)")
+    print_note(f"{s['running']} Actif(s) • {s['stopped']} Arrêté(s) • {s['other_states']} Autre(s)")
     nodes = [n for n in report["nodes"] if node is None or n["name"] == node]
     guests = [g for g in report["guests"] if (node is None or g["node"] == node)
               and (status is None or g["status"] == status)]
     if node or status:
-        print_note("Filtres : nœud=" + (node or "tous") + "; état=" + (display_status(status) if status else "tous"))
+        print_note("Filtres : Nœud = " + (node or "Tous") + " ; État = " + (display_status(status) if status else "Tous"))
         print_note("Le JSON conserve l’inventaire complet.")
     print_heading("Nœuds")
     print_table(["Nœud", "État", "CPU", "RAM utilisée", "RAM totale"], [
@@ -322,7 +322,7 @@ def print_summary(report, node=None, status=None):
         print_heading("Invités / " + safe(name))
         print_table(["ID", "Type", "Nom", "État", "vCPU", "RAM", "Disque*"], [
             [g["vmid"], g["type"].upper(), g["name"] or "n/d",
-             "modèle" if g["is_template"] else display_status(g["status"]),
+             "Modèle" if g["is_template"] else display_status(g["status"]),
              g["vcpu"] if g["vcpu"] is not None else "n/d",
              gib(g["memory_allocated_bytes"]), gib(g["disk_reported_bytes"])]
             for g in guests if g["node"] == name])
@@ -502,7 +502,8 @@ def save_history(report, directory):
 def check_connection(quiet=False):
     """Diagnostic avec les mêmes requêtes et contrôles que la collecte."""
     if not quiet:
-        print_heading("Proxmox Inventory / Diagnostic")
+        print_heading("Proxmox Inventory")
+        print_note("Diagnostic de connexion")
     stage = "Configuration"
     try:
         client = ProxmoxClient()
