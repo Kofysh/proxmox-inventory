@@ -272,12 +272,12 @@ def display_status(value):
 
 
 def print_summary(report, node=None, status=None):
-    print_heading("PROXMOX INVENTORY  /  " + report["mode"].upper())
+    print_heading("Proxmox Inventory / " + ("Démonstration" if report["mode"] == "demo" else "Collecte réelle"))
     print_note("Lecture seule | " + report["generated_at"])
     if report["mode"] == "demo":
         print_note("Données fictives — aucune connexion à un serveur.")
     s = report["summary"]
-    print_heading("VUE D’ENSEMBLE")
+    print_heading("Vue d’ensemble")
     print_note(f"{s['nodes']} nœud(s) • {s['guests']} invité(s) • {s['templates']} modèle(s)")
     print_note(f"{s['running']} actif(s) • {s['stopped']} arrêté(s) • {s['other_states']} autre(s)")
     nodes = [n for n in report["nodes"] if node is None or n["name"] == node]
@@ -286,22 +286,22 @@ def print_summary(report, node=None, status=None):
     if node or status:
         print_note("Filtres : nœud=" + (node or "tous") + "; état=" + (status or "tous"))
         print_note("Le JSON conserve l’inventaire complet.")
-    print_heading("NŒUDS")
-    print_table(["NŒUD", "ÉTAT", "CPU", "RAM utilisée", "RAM totale"], [
+    print_heading("Nœuds")
+    print_table(["Nœud", "État", "CPU", "RAM utilisée", "RAM totale"], [
         [n["name"], display_status(n["status"]), n["cpu_count"] if n["cpu_count"] is not None else "n/d",
          gib(n["memory_used_bytes"]), gib(n["memory_total_bytes"])] for n in nodes])
     for name in sorted({g["node"] for g in guests}):
-        print_heading("INVITÉS / " + safe(name))
-        print_table(["ID", "TYPE", "NOM", "ÉTAT", "vCPU", "RAM", "DISQUE*"], [
+        print_heading("Invités / " + safe(name))
+        print_table(["ID", "Type", "Nom", "État", "vCPU", "RAM", "Disque*"], [
             [g["vmid"], g["type"].upper(), g["name"] or "n/d",
              "modèle" if g["is_template"] else display_status(g["status"]),
              g["vcpu"] if g["vcpu"] is not None else "n/d",
              gib(g["memory_allocated_bytes"]), gib(g["disk_reported_bytes"])]
             for g in guests if g["node"] == name])
     if not guests:
-        print_heading("INVITÉS")
+        print_heading("Invités")
         print("  Aucune ressource ne correspond à la sélection.")
-    print_heading("NOTES")
+    print_heading("Notes")
     print_note("* Disque déclaré par l’API (maxdisk), pas nécessairement le total des disques.")
     for warning in report["warnings"]:
         print_note(warning, "- ")
@@ -396,11 +396,11 @@ def compare_inventories(before, after):
 
 
 def print_comparison(report):
-    print_heading("COMPARAISON D’INVENTAIRES / " + report["mode"].upper())
+    print_heading("Comparaison d’inventaires / " + ("Démonstration" if report["mode"] == "demo" else "Collecte réelle"))
     print_note("Avant : " + report["before_at"])
     print_note("Après : " + report["after_at"])
-    print_heading("BILAN")
-    print_table(["RESSOURCES", "VISIBLES +", "ABSENTES", "MODIFIÉES"], [
+    print_heading("Bilan")
+    print_table(["Ressources", "Visibles +", "Absentes", "Modifiées"], [
         [label, len(report[kind]["added"]), len(report[kind]["removed"]), len(report[kind]["changed"])]
         for kind, label in (("nodes", "Nœuds"), ("guests", "Invités"))])
     labels = {"status": "État", "cpu_count": "CPU", "memory_total_bytes": "RAM totale",
@@ -414,7 +414,7 @@ def print_comparison(report):
         if field == "status":
             return display_status(item)
         return "n/d" if item is None else item
-    for kind, label in (("nodes", "NŒUDS"), ("guests", "INVITÉS")):
+    for kind, label in (("nodes", "Nœuds"), ("guests", "Invités")):
         delta = report[kind]
         if not any(delta.values()):
             continue
@@ -426,10 +426,10 @@ def print_comparison(report):
         rows = [[row[key], labels.get(field, field), value(field, values["before"]), value(field, values["after"])]
                 for row in delta["changed"] for field, values in row["changes"].items()]
         if rows:
-            print_table(["RESSOURCE", "CHAMP", "AVANT", "APRÈS"], rows)
+            print_table(["Ressource", "Champ", "Avant", "Après"], rows)
     if not report["has_changes"]:
         print_note("Aucun changement sur les champs suivis.")
-    print_heading("NOTES")
+    print_heading("Notes")
     for warning in report["warnings"]:
         print_note(warning, "- ")
 
@@ -474,7 +474,7 @@ def save_history(report, directory):
 def check_connection(quiet=False):
     """Diagnostic avec les mêmes requêtes et contrôles que la collecte."""
     if not quiet:
-        print_heading("PROXMOX INVENTORY / DIAGNOSTIC")
+        print_heading("Proxmox Inventory / Diagnostic")
     stage = "Configuration"
     try:
         client = ProxmoxClient()
@@ -495,7 +495,7 @@ def check_connection(quiet=False):
         raise InventoryError(stage + " : " + str(exc)) from None
     if not quiet:
         print_note("[OK] Données valides ; aucun fichier créé.")
-        print_heading("VISIBILITÉ")
+        print_heading("Visibilité")
         summary = report["summary"]
         print_note(f"{summary['nodes']} nœud(s), {summary['guests']} invité(s), {summary['templates']} modèle(s).")
         for warning in report["warnings"]:
@@ -511,7 +511,7 @@ def main(argv=None):
     parser.add_argument("--quiet", action="store_true", help="Afficher uniquement les erreurs ; conserve les exports et les codes de retour.")
     parser.add_argument("--demo", action="store_true", help="Données fictives locales, sans réseau ni jeton.")
     parser.add_argument("--output", help="Destination JSON ; par défaut reports/inventory.json ou reports/comparison.json.")
-    parser.add_argument("--compare", nargs=2, metavar=("AVANT", "APRES"), help="Comparer deux rapports locaux, sans réseau.")
+    parser.add_argument("--compare", nargs=2, metavar=("Avant", "APRES"), help="Comparer deux rapports locaux, sans réseau.")
     parser.add_argument("--node", help="Filtrer le résumé du terminal par nom de nœud.")
     parser.add_argument("--status", choices=("running", "stopped"), help="Filtrer les invités affichés par état.")
     parser.add_argument("--version", action="version", version=VERSION)
@@ -533,7 +533,7 @@ def main(argv=None):
             write_report(comparison, output)
             if not args.quiet:
                 print_comparison(comparison)
-                print_heading("EXPORT")
+                print_heading("Export")
                 print_note("JSON : " + str(output))
             return 0
         if args.demo:
@@ -556,9 +556,9 @@ def main(argv=None):
                 if comparison is not None:
                     print_comparison(comparison)
                 else:
-                    print_heading("HISTORIQUE")
+                    print_heading("Historique")
                     print_note("Première collecte : référence enregistrée pour la prochaine comparaison.")
-                print_heading("EXPORT")
+                print_heading("Export")
                 print_note("Inventaire : " + str(folder / "inventory.json"))
                 if comparison is not None:
                     print_note("Comparaison : " + str(folder / "comparison.json"))
@@ -567,11 +567,11 @@ def main(argv=None):
         write_report(report, output)
         if not args.quiet:
             print_summary(report, args.node, args.status)
-            print_heading("EXPORT")
+            print_heading("Export")
             print_note("JSON : " + str(output))
         return 0
     except InventoryError as exc:
-        print("ERREUR : " + str(exc), file=sys.stderr)
+        print("Erreur : " + str(exc), file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("Interruption utilisateur.", file=sys.stderr)

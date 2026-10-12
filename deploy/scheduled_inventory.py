@@ -14,7 +14,7 @@ def run():
         if not secret:
             raise ValueError
     except (KeyError, OSError, UnicodeError, ValueError):
-        print('ERREUR : credential systemd pve-token absent ou illisible.', file=sys.stderr)
+        print('Erreur : secret systemd pve-token absent ou illisible.', file=sys.stderr)
         return 1
     os.environ['PVE_TOKEN_SECRET'] = secret
     try:
@@ -22,7 +22,7 @@ def run():
     finally:
         os.environ.pop('PVE_TOKEN_SECRET', None)
     if code == 0:
-        print('Collecte terminee : inventaire et historique enregistres.')
+        print('Collecte terminée : inventaire et historique enregistrés.')
     return code
 
 

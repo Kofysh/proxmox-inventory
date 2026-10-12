@@ -1,32 +1,32 @@
 
-COMPARAISON D’INVENTAIRES / DEMO
+Comparaison d’inventaires / Démonstration
 --------------------------------------------------------------------------------
   Avant : 2026-10-12T22:44:27.750878+00:00
   Après : 2026-10-12T22:44:27.796746+00:00
 
-BILAN
+Bilan
 --------------------------------------------------------------------------------
-RESSOURCES  VISIBLES +  ABSENTES  MODIFIÉES
+Ressources  Visibles +  Absentes  Modifiées
 ----------  ----------  --------  ---------
 Nœuds       0           0         0
 Invités     1           1         1
 
-INVITÉS
+Invités
 --------------------------------------------------------------------------------
   Nouvellement visible : 301
   Absent : 102
-RESSOURCE  CHAMP  AVANT    APRÈS
+Ressource  Champ  Avant    Après
 ---------  -----  -------  -------
 101        État   actif    arrêté
 101        RAM    4.0 Gio  8.0 Gio
 
-NOTES
+Notes
 --------------------------------------------------------------------------------
 - Une ressource absente peut être masquée par les droits du jeton ; son absence
   ne prouve pas sa suppression.
 - Un VMID réutilisé ne permet pas de distinguer une recréation d’une
   modification.
 
-EXPORT
+Export
 --------------------------------------------------------------------------------
   JSON : reports/comparison.json

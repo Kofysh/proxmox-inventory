@@ -1,35 +1,35 @@
 
-PROXMOX INVENTORY  /  DEMO
+Proxmox Inventory / Démonstration
 --------------------------------------------------------------------------------
-  Lecture seule | 2026-10-12T23:03:17.274301+00:00
+  Lecture seule | 2026-10-12T23:28:16.008619+00:00
   Données fictives — aucune connexion à un serveur.
 
-VUE D’ENSEMBLE
+Vue d’ensemble
 --------------------------------------------------------------------------------
   1 nœud(s) • 3 invité(s) • 1 modèle(s)
   2 actif(s) • 1 arrêté(s) • 0 autre(s)
 
-NŒUDS
+Nœuds
 --------------------------------------------------------------------------------
-NŒUD        ÉTAT      CPU  RAM utilisée  RAM totale
+Nœud        État      CPU  RAM utilisée  RAM totale
 ----------  --------  ---  ------------  ----------
 pve-lab-01  en ligne  8    10.0 Gio      32.0 Gio
 
-INVITÉS / pve-lab-01
+Invités / pve-lab-01
 --------------------------------------------------------------------------------
-ID    TYPE  NOM              ÉTAT    vCPU  RAM      DISQUE*
+ID    Type  Nom              État    vCPU  RAM      Disque*
 ----  ----  ---------------  ------  ----  -------  --------
 101   QEMU  vps-demo-01      actif   2     4.0 Gio  40.0 Gio
 102   QEMU  vps-demo-02      arrêté  2     2.0 Gio  20.0 Gio
 201   LXC   paymenter-demo   actif   2     2.0 Gio  16.0 Gio
 9000  QEMU  debian-template  modèle  2     2.0 Gio  8.0 Gio
 
-NOTES
+Notes
 --------------------------------------------------------------------------------
   * Disque déclaré par l’API (maxdisk), pas nécessairement le total des disques.
 - L'inventaire est limité aux ressources visibles par le jeton ; son
   exhaustivité n'est pas vérifiée.
 
-EXPORT
+Export
 --------------------------------------------------------------------------------
   JSON : reports/inventory.json

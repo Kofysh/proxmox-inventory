@@ -10,6 +10,7 @@ Les fichiers `deploy/` fournissent un service à exécution unique, un timer quo
 - Inventaires et comparaisons sous `/var/lib/proxmox-inventory/history`, conservés entre les exécutions.
 - Répertoire de données privé ; système en lecture seule pour le service, sauf les emplacements gérés par systemd.
 - Secret transmis par `LoadCredential`, absent de l’unité et de la ligne de commande. L’adaptateur le place en mémoire dans l’environnement du processus Python pendant la collecte.
+- Encodage UTF-8 explicite pour conserver les accents dans les journaux.
 - Une ligne de succès ou un message d’erreur dans le journal. Les inventaires détaillés ne sont pas écrits dans les journaux.
 
 Le timer ne purge pas les rapports et ne renouvelle pas les jetons. L’utilisateur Proxmox et son jeton doivent tous deux rester actifs ; suivre leurs dates d’expiration.
