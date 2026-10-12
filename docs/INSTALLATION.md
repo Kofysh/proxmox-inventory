@@ -85,7 +85,7 @@ Le fichier de destination est remplacé atomiquement après une collecte réussi
 
 | Code de sortie | Sens |
 |---|---|
-| `0` | Collecte ou comparaison réussie, même si des avertissements ou différences existent |
+| `0` | Collecte, comparaison ou diagnostic réussi, même si des avertissements ou différences existent |
 | `1` | Erreur de configuration, collecte ou écriture |
 | `2` | Arguments de ligne de commande invalides |
 | `130` | Interruption au clavier |
@@ -118,3 +118,37 @@ python3 proxmox_inventory.py --compare reports/avant.json reports/apres.json --o
 Les filtres concernent uniquement le terminal ; le JSON conserve l’inventaire complet. `--compare` est un mode hors ligne, incompatible avec `--demo`, `--node` et `--status`. L’ordre des fichiers est ancien puis nouveau. Le mode comparaison utilise `reports/comparison.json` comme destination par défaut.
 
 Pour conserver plusieurs mesures réelles, choisir un nom distinct à chaque collecte avec `--output`. Les rapports doivent provenir de la même URL et du même périmètre d’accès ; le logiciel vérifie l’URL et le mode mais ne peut pas vérifier que les ACL sont restées identiques.
+
+## Diagnostic avant la première collecte
+
+Après avoir défini les variables, lancer :
+
+```bash
+python3 proxmox_inventory.py --check
+```
+
+Le diagnostic contrôle successivement la configuration et le chargement de l’autorité, la réponse HTTPS de `/nodes`, celle de `/cluster/resources?type=vm`, puis la structure des données. La validation TLS reste obligatoire. Les requêtes sont les mêmes que pour un inventaire ; aucun endpoint supplémentaire ni écriture API n’est utilisé. Aucun export n’est créé.
+
+`--check` accepte uniquement `--quiet` comme autre option de traitement. Les options de collecte, de filtrage et de destination sont rejetées avant tout accès réseau. Le code `0` signifie que les réponses sont accessibles et valides ; il ne prouve pas que le jeton voit toutes les ressources. Une liste vide peut être légitime ou liée aux ACL.
+
+| Diagnostic réseau | Piste à vérifier |
+|---|---|
+| Résolution DNS échouée | Nom dans `PVE_URL` et résolveur utilisé par le poste |
+| Connexion refusée | Port cible, service HTTPS et éventuel rejet réseau |
+| Délai réseau dépassé | Routage, filtrage, disponibilité et `PVE_TIMEOUT` |
+| Certificat HTTPS non validé | Nom DNS, horloge, autorité interne et chaîne de confiance |
+| Négociation TLS échouée | Service HTTPS et configuration TLS |
+| Réseau ou hôte inaccessible | Route réseau et connexion VPN |
+| Connexion interrompue ou réponse incomplète | Disponibilité du serveur ; relancer la collecte |
+
+Le message est produit à partir du type d’exception ; les détails bruts, les en-têtes et le secret ne sont jamais affichés. Un type d’erreur non reconnu conserve un message général. Aucune nouvelle tentative automatique n’est effectuée.
+
+## Sortie silencieuse pour les scripts
+
+```bash
+python3 proxmox_inventory.py --quiet --output reports/inventory-live.json
+```
+
+En cas de succès, aucune sortie texte n’est produite. En cas d’échec, `stderr` reste renseigné et le code de retour vaut `1`. Consulter le code de retour avant de réutiliser un rapport : en cas d’échec, un ancien fichier peut toujours exister. Les avertissements restent présents dans le JSON, même en mode silencieux.
+
+`--quiet` fonctionne également avec la démonstration, la comparaison et le diagnostic. Pour `--check --quiet`, aucun rapport n’est créé : le code de retour indique uniquement le succès des vérifications, pas l’absence d’avertissements de visibilité.

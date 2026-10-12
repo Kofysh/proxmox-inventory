@@ -6,7 +6,7 @@
 
 Nœuds, machines virtuelles et conteneurs · Export JSON · Lecture seule
 
-**Python 3.10+** &nbsp; / &nbsp; **Sans dépendance externe** &nbsp; / &nbsp; **Version 1.1.0**
+**Python 3.10+** &nbsp; / &nbsp; **Sans dépendance externe** &nbsp; / &nbsp; **Version 1.2.0**
 
 [![Tests Python](https://github.com/Kofysh/proxmox-inventory/actions/workflows/tests.yml/badge.svg)](https://github.com/Kofysh/proxmox-inventory/actions/workflows/tests.yml)
 
@@ -26,7 +26,7 @@ Ce dépôt accompagne le **projet 1 de Bachelor 2 à OTERIA**, consacré à une 
 | :--- | :--- | :--- |
 | Nœuds, VM QEMU, conteneurs LXC et modèles | États, vCPU, mémoire et capacité disque déclarée | Rapport JSON horodaté en UTC et résumé dans le terminal |
 
-> **État du projet** — Le mode démonstration et les 30 tests automatisés ont été exécutés avec succès. Une collecte réelle de conteneurs LXC a également réussi en HTTPS local, avec vérification du certificat et jeton en lecture seule. Voir le périmètre exact dans [Validation](docs/VALIDATION.md).
+> **État du projet** — Le mode démonstration et les 38 tests automatisés ont été exécutés avec succès. Une collecte réelle de conteneurs LXC a également réussi en HTTPS local, avec vérification du certificat et jeton en lecture seule. Voir le périmètre exact dans [Validation](docs/VALIDATION.md).
 
 <a id="demarrage-rapide"></a>
 
@@ -120,6 +120,25 @@ python3 proxmox_inventory.py --output reports/inventory-live.json
 **[Consulter le guide de configuration →](docs/INSTALLATION.md)**  
 Création du jeton, permissions, certificats, commandes Bash et PowerShell, codes de retour et dépannage.
 
+## Vérifier la connexion
+
+```bash
+python3 proxmox_inventory.py --check
+```
+
+Le diagnostic vérifie la configuration, réalise les deux requêtes HTTPS autorisées puis valide les données retournées. Il indique l’étape qui échoue et distingue les erreurs DNS, de connexion refusée, de délai et de certificat. **Il ne crée aucun fichier et ne modifie aucune ressource.**
+
+Un succès confirme l’accès aux routes et la validité des données reçues, pas l’exhaustivité du cluster. Une liste vide reste accompagnée d’un avertissement sur les permissions. Le diagnostic s’arrête au premier échec.
+
+## Exécuter en silence
+
+```bash
+python3 proxmox_inventory.py --quiet --output reports/inventory-live.json
+python3 proxmox_inventory.py --check --quiet
+```
+
+`--quiet` supprime l’affichage normal et les avertissements du terminal. Les erreurs restent sur la sortie d’erreur, avec un code de retour non nul. Les rapports JSON conservent toutes les informations et leurs avertissements. Cette option fonctionne aussi avec `--demo` et `--compare`.
+
 ## Fonctionnement
 
 Le programme effectue deux appels à l’API :
@@ -139,7 +158,7 @@ Les redirections HTTP sont refusées. Le secret du jeton n’est inclus ni dans 
 python3 -m unittest discover -s tests -v
 ```
 
-Les **30 tests** couvrent le comptage des ressources, les données manquantes ou invalides, les erreurs d’authentification et de connexion, les paramètres TLS ainsi que l’écriture du rapport. Le transport réseau est simulé : ces tests ne remplacent pas une recette sur le serveur cible.
+Les **38 tests** couvrent le comptage des ressources, les données manquantes ou invalides, les erreurs d’authentification et de connexion, les paramètres TLS ainsi que l’écriture du rapport. Le transport réseau est simulé : ces tests ne remplacent pas une recette sur le serveur cible.
 
 Le workflow GitHub Actions exécute les tests, la démonstration et la comparaison sous **Linux et Windows**, avec Python **3.10, 3.12 et 3.13**, à chaque push sur `main` et à chaque pull request. Le badge affiche son état réel. Aucun secret Proxmox n’est nécessaire.
 
@@ -150,7 +169,7 @@ Le [document de validation](docs/VALIDATION.md) précise les vérifications réa
 | Fichier | Contenu |
 | :--- | :--- |
 | [`proxmox_inventory.py`](proxmox_inventory.py) | Client API, traitement des données, export et interface en ligne de commande |
-| [`tests/`](tests/) | Tests de collecte, comparaison, filtres et erreurs |
+| [`tests/`](tests/) | Tests de collecte, diagnostic, mode silencieux, comparaison et erreurs |
 | [`.github/workflows/tests.yml`](.github/workflows/tests.yml) | Vérifications automatiques Linux / Windows |
 | [`examples/`](examples/) | Données fictives et exemples de résultats |
 | [`docs/INSTALLATION.md`](docs/INSTALLATION.md) | Configuration et utilisation sur Proxmox |

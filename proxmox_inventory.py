@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 from http.client import HTTPException
 import json
 import math
@@ -10,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import socket
 import textwrap
 import ssl
 import sys
@@ -19,12 +21,34 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPSHandler, HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 MAX_RESPONSE_BYTES = 10 * 1024 * 1024
 
 
 class InventoryError(Exception):
     """Erreur dont le message peut être présenté sans divulguer le jeton."""
+
+
+def connection_error(error):
+    """Classer la cause sans exposer les messages bruts ou les secrets."""
+    cause = error.reason if isinstance(error, URLError) else error
+    if isinstance(cause, ssl.SSLCertVerificationError):
+        detail = "certificat HTTPS non validé ; vérifier le nom DNS, la date et PVE_CA_FILE."
+    elif isinstance(cause, ssl.SSLError):
+        detail = "négociation TLS échouée ; vérifier le service HTTPS et sa configuration."
+    elif isinstance(cause, socket.gaierror):
+        detail = "résolution DNS échouée ; vérifier PVE_URL et le résolveur du poste."
+    elif isinstance(cause, (TimeoutError, socket.timeout)) or getattr(cause, "errno", None) == errno.ETIMEDOUT:
+        detail = "délai réseau dépassé ; vérifier le routage, le pare-feu et PVE_TIMEOUT."
+    elif isinstance(cause, ConnectionRefusedError) or getattr(cause, "errno", None) == errno.ECONNREFUSED:
+        detail = "connexion refusée ; vérifier le port de PVE_URL et le service à destination."
+    elif getattr(cause, "errno", None) in (errno.ENETUNREACH, errno.EHOSTUNREACH):
+        detail = "réseau ou hôte inaccessible ; vérifier le VPN et le routage."
+    elif isinstance(cause, (ConnectionResetError, ConnectionAbortedError, HTTPException)):
+        detail = "connexion interrompue ou réponse incomplète ; réessayer et vérifier le serveur."
+    else:
+        detail = "vérifier réseau/VPN, DNS, port, délai et certificat HTTPS."
+    return InventoryError("Connexion impossible : " + detail)
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -91,8 +115,8 @@ class ProxmoxClient:
             if 300 <= status < 400:
                 raise InventoryError("Redirection HTTP refusée ; utiliser directement l'adresse HTTPS de l'API.") from None
             raise InventoryError(f"L'API a renvoyé HTTP {status}.") from None
-        except (ssl.SSLError, URLError, TimeoutError, OSError, HTTPException):
-            raise InventoryError("Connexion impossible : vérifier réseau/VPN, DNS, port, délai et certificat HTTPS.") from None
+        except (ssl.SSLError, URLError, TimeoutError, OSError, HTTPException) as exc:
+            raise connection_error(exc) from None
         if len(raw) > MAX_RESPONSE_BYTES:
             raise InventoryError("Réponse API trop volumineuse (limite : 10 Mio).")
         try:
@@ -409,8 +433,42 @@ def print_comparison(report):
         print_note(warning, "- ")
 
 
+def check_connection(quiet=False):
+    """Diagnostic avec les mêmes requêtes et contrôles que la collecte."""
+    if not quiet:
+        print_heading("PROXMOX INVENTORY / DIAGNOSTIC")
+    stage = "Configuration"
+    try:
+        client = ProxmoxClient()
+        if not quiet:
+            print_note("[OK] Configuration et autorité de confiance chargées.")
+        stage = "API des nœuds"
+        nodes = client.get("/nodes")
+        if not quiet:
+            print_note("[OK] HTTPS vérifié, réponse reçue pour /nodes.")
+        stage = "API des invités"
+        resources = client.get("/cluster/resources?type=vm")
+        if not quiet:
+            print_note("[OK] Réponse reçue pour /cluster/resources?type=vm.")
+        stage = "Validation des données"
+        report = build_report(nodes, resources, "live", client.base_url)
+        validate_inventory(report)
+    except InventoryError as exc:
+        raise InventoryError(stage + " : " + str(exc)) from None
+    if not quiet:
+        print_note("[OK] Données valides ; aucun fichier créé.")
+        print_heading("VISIBILITÉ")
+        summary = report["summary"]
+        print_note(f"{summary['nodes']} nœud(s), {summary['guests']} invité(s), {summary['templates']} modèle(s).")
+        for warning in report["warnings"]:
+            print_note(warning, "- ")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="Diagnostiquer la connexion et les données API, sans écrire de rapport.")
+    parser.add_argument("--quiet", action="store_true", help="Afficher uniquement les erreurs ; conserve les exports et les codes de retour.")
     parser.add_argument("--demo", action="store_true", help="Données fictives locales, sans réseau ni jeton.")
     parser.add_argument("--output", help="Destination JSON ; par défaut reports/inventory.json ou reports/comparison.json.")
     parser.add_argument("--compare", nargs=2, metavar=("AVANT", "APRES"), help="Comparer deux rapports locaux, sans réseau.")
@@ -420,16 +478,21 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.compare and (args.demo or args.node or args.status):
         parser.error("--compare ne se combine pas avec --demo, --node ou --status.")
+    if args.check and (args.demo or args.compare or args.node or args.status or args.output):
+        parser.error("--check ne se combine qu’avec --quiet.")
     try:
+        if args.check:
+            return check_connection(args.quiet)
         if args.compare:
             output = args.output or "reports/comparison.json"
             if any(Path(output).resolve() == Path(p).resolve() for p in args.compare):
                 raise InventoryError("La destination ne doit pas écraser un inventaire comparé.")
             comparison = compare_inventories(*(read_inventory(p) for p in args.compare))
             write_report(comparison, output)
-            print_comparison(comparison)
-            print_heading("EXPORT")
-            print_note("JSON : " + str(output))
+            if not args.quiet:
+                print_comparison(comparison)
+                print_heading("EXPORT")
+                print_note("JSON : " + str(output))
             return 0
         if args.demo:
             try:
@@ -446,9 +509,10 @@ def main(argv=None):
         report = build_report(nodes, resources, mode, source)
         output = args.output or "reports/inventory.json"
         write_report(report, output)
-        print_summary(report, args.node, args.status)
-        print_heading("EXPORT")
-        print_note("JSON : " + str(output))
+        if not args.quiet:
+            print_summary(report, args.node, args.status)
+            print_heading("EXPORT")
+            print_note("JSON : " + str(output))
         return 0
     except InventoryError as exc:
         print("ERREUR : " + str(exc), file=sys.stderr)

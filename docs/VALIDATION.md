@@ -60,3 +60,9 @@ Pour chaque essai réalisé, noter la date, la version de Proxmox, la version Py
 ## Limites connues
 
 L’outil ne démontre pas que l’ensemble de la plateforme VPS est sécurisé. Il n’évalue ni l’isolation réseau, ni la restauration de sauvegardes, ni le fonctionnement du plugin Paymenter. Son résultat reste limité aux informations exposées par l’API et aux droits du jeton.
+
+## Version 1.2.0 — diagnostic et exécution silencieuse
+
+La suite locale comporte **38 tests**, tous réussis. Les huit nouveaux tests couvrent la classification des exceptions réseau directes et encapsulées, la suppression des détails privés, les deux routes du diagnostic, l’absence d’écriture, les données invalides, les listes vides, l’arrêt au premier échec, les combinaisons d’arguments interdites et les exports silencieux.
+
+Ces nouvelles fonctions sont validées avec un transport simulé. La recette réelle décrite plus haut concerne le commit indiqué dans cette section ; elle n’a pas été répétée avec la version 1.2.0. Aucun nouveau compte ou jeton Proxmox n’a été créé pour cette mise à jour.
