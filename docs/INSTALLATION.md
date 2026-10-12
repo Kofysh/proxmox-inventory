@@ -129,7 +129,7 @@ python3 proxmox_inventory.py --check
 
 Le diagnostic contrôle successivement la configuration et le chargement de l’autorité, la réponse HTTPS de `/nodes`, celle de `/cluster/resources?type=vm`, puis la structure des données. La validation TLS reste obligatoire. Les requêtes sont les mêmes que pour un inventaire ; aucun endpoint supplémentaire ni écriture API n’est utilisé. Aucun export n’est créé.
 
-`--check` accepte uniquement `--quiet` comme autre option de traitement. Les options de collecte, de filtrage et de destination sont rejetées avant tout accès réseau. Le code `0` signifie que les réponses sont accessibles et valides ; il ne prouve pas que le jeton voit toutes les ressources. Une liste vide peut être légitime ou liée aux ACL.
+`--check` accepte `--quiet` et `--color` comme autres options de présentation. Les options de collecte, de filtrage et de destination sont rejetées avant tout accès réseau. Le code `0` signifie que les réponses sont accessibles et valides ; il ne prouve pas que le jeton voit toutes les ressources. Une liste vide peut être légitime ou liée aux ACL.
 
 | Diagnostic réseau | Piste à vérifier |
 |---|---|

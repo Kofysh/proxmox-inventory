@@ -23,6 +23,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPSHandler, HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 VERSION = "1.3.0"
+COLOR_MODE = "auto"
 MAX_RESPONSE_BYTES = 10 * 1024 * 1024
 
 
@@ -230,18 +231,38 @@ def gib(value):
     return "n/d" if value is None else f"{value / 1024**3:.1f} Gio"
 
 
+def colorize(text, style, stream=None):
+    stream = sys.stdout if stream is None else stream
+    enabled = COLOR_MODE == "always" or (COLOR_MODE == "auto" and
+              "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb" and
+              getattr(stream, "isatty", lambda: False)())
+    return f"\033[{style}m{text}\033[0m" if enabled else text
+
+
+def display_date(value):
+    try:
+        stamp = datetime.fromisoformat(value)
+        if stamp.tzinfo is None:
+            return safe(value)
+        return stamp.astimezone(timezone.utc).strftime("%d/%m/%Y à %H:%M:%S UTC")
+    except (ValueError, TypeError):
+        return safe(value)
+
+
 def terminal_width():
     return max(40, min(shutil.get_terminal_size((80, 24)).columns, 120))
 
 
 def print_note(message, prefix="  "):
-    print(textwrap.fill(safe(message), width=terminal_width(),
-                        initial_indent=prefix, subsequent_indent="  "))
+    wrapped = textwrap.fill(safe(message), width=terminal_width(),
+                            initial_indent=prefix, subsequent_indent="  ")
+    style = "32" if message.startswith("[OK]") else ("33" if prefix == "- " else "0")
+    print(colorize(wrapped, style) if style != "0" else wrapped)
 
 
 def print_heading(title):
-    print("\n" + title)
-    print("-" * terminal_width())
+    print("\n" + colorize(safe(title), "1;35"))
+    print(colorize("─" * terminal_width(), "2"))
 
 
 def print_table(headers, rows):
@@ -260,10 +281,17 @@ def print_table(headers, rows):
         cells = [textwrap.wrap(value, width=width) or [""]
                  for value, width in zip(row, widths)]
         for line in range(max(map(len, cells))):
-            print("  ".join((cell[line] if line < len(cell) else "").ljust(width)
-                            for cell, width in zip(cells, widths)).rstrip())
+            pieces = []
+            for column, (cell, width) in enumerate(zip(cells, widths)):
+                text = (cell[line] if line < len(cell) else "").ljust(width)
+                if column == len(cells) - 1:
+                    text = text.rstrip()
+                style = "1" if index == 0 else {"actif": "32", "en ligne": "32",
+                    "arrêté": "33", "hors ligne": "31", "inconnu": "33", "modèle": "35"}.get(row[column])
+                pieces.append(colorize(text, style) if style else text)
+            print("  ".join(pieces).rstrip())
         if index == 0:
-            print("  ".join("-" * width for width in widths))
+            print(colorize("  ".join("─" * width for width in widths), "2"))
 
 
 def display_status(value):
@@ -273,7 +301,7 @@ def display_status(value):
 
 def print_summary(report, node=None, status=None):
     print_heading("Proxmox Inventory / " + ("Démonstration" if report["mode"] == "demo" else "Collecte réelle"))
-    print_note("Lecture seule | " + report["generated_at"])
+    print_note("Lecture seule | " + display_date(report["generated_at"]))
     if report["mode"] == "demo":
         print_note("Données fictives — aucune connexion à un serveur.")
     s = report["summary"]
@@ -284,7 +312,7 @@ def print_summary(report, node=None, status=None):
     guests = [g for g in report["guests"] if (node is None or g["node"] == node)
               and (status is None or g["status"] == status)]
     if node or status:
-        print_note("Filtres : nœud=" + (node or "tous") + "; état=" + (status or "tous"))
+        print_note("Filtres : nœud=" + (node or "tous") + "; état=" + (display_status(status) if status else "tous"))
         print_note("Le JSON conserve l’inventaire complet.")
     print_heading("Nœuds")
     print_table(["Nœud", "État", "CPU", "RAM utilisée", "RAM totale"], [
@@ -397,8 +425,8 @@ def compare_inventories(before, after):
 
 def print_comparison(report):
     print_heading("Comparaison d’inventaires / " + ("Démonstration" if report["mode"] == "demo" else "Collecte réelle"))
-    print_note("Avant : " + report["before_at"])
-    print_note("Après : " + report["after_at"])
+    print_note("Avant : " + display_date(report["before_at"]))
+    print_note("Après : " + display_date(report["after_at"]))
     print_heading("Bilan")
     print_table(["Ressources", "Visibles +", "Absentes", "Modifiées"], [
         [label, len(report[kind]["added"]), len(report[kind]["removed"]), len(report[kind]["changed"])]
@@ -504,24 +532,28 @@ def check_connection(quiet=False):
 
 
 def main(argv=None):
+    global COLOR_MODE
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--color", choices=("auto", "always", "never"), default="auto",
+                        help="Couleurs du terminal : auto (défaut), always ou never. Respecte NO_COLOR en mode auto.")
     parser.add_argument("--history", nargs="?", const="reports/history", metavar="DOSSIER",
                         help="Conserver une collecte datée et la comparer à la précédente (défaut : reports/history).")
     parser.add_argument("--check", action="store_true", help="Diagnostiquer la connexion et les données API, sans écrire de rapport.")
     parser.add_argument("--quiet", action="store_true", help="Afficher uniquement les erreurs ; conserve les exports et les codes de retour.")
     parser.add_argument("--demo", action="store_true", help="Données fictives locales, sans réseau ni jeton.")
     parser.add_argument("--output", help="Destination JSON ; par défaut reports/inventory.json ou reports/comparison.json.")
-    parser.add_argument("--compare", nargs=2, metavar=("Avant", "APRES"), help="Comparer deux rapports locaux, sans réseau.")
+    parser.add_argument("--compare", nargs=2, metavar=("AVANT", "APRES"), help="Comparer deux rapports locaux, sans réseau.")
     parser.add_argument("--node", help="Filtrer le résumé du terminal par nom de nœud.")
     parser.add_argument("--status", choices=("running", "stopped"), help="Filtrer les invités affichés par état.")
     parser.add_argument("--version", action="version", version=VERSION)
     args = parser.parse_args(argv)
+    COLOR_MODE = args.color
     if args.compare and (args.demo or args.node or args.status):
         parser.error("--compare ne se combine pas avec --demo, --node ou --status.")
     if args.history is not None and (args.output or args.compare or args.check):
         parser.error("--history ne se combine pas avec --output, --compare ou --check.")
     if args.check and (args.demo or args.compare or args.node or args.status or args.output):
-        parser.error("--check ne se combine qu’avec --quiet.")
+        parser.error("--check accepte uniquement --quiet et --color comme options supplémentaires.")
     try:
         if args.check:
             return check_connection(args.quiet)
@@ -571,7 +603,7 @@ def main(argv=None):
             print_note("JSON : " + str(output))
         return 0
     except InventoryError as exc:
-        print("Erreur : " + str(exc), file=sys.stderr)
+        print(colorize("Erreur : " + str(exc), "31", sys.stderr), file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("Interruption utilisateur.", file=sys.stderr)

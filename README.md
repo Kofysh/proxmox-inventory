@@ -73,7 +73,18 @@ python3 proxmox_inventory.py --demo --node pve-lab-01 --status running
 
 Le terminal présente un résumé, les nœuds, puis les invités regroupés par nœud. Les sections sont espacées, les états sont traduits en français et les tableaux s’adaptent à la largeur disponible (40 à 120 colonnes). `--node` sélectionne un nom de nœud exact ; `--status` accepte `running` ou `stopped` et concerne uniquement les invités. Les modèles sont sélectionnés selon leur état API mais restent identifiés comme modèles.
 
-**Les filtres ne modifient pas le JSON exporté.** L’inventaire complet reste disponible pour les comparaisons. Les cellules longues passent sur plusieurs lignes. Les notes sont repliées à la largeur du terminal ; aucun code couleur ANSI n’est ajouté aux sorties redirigées.
+**Les filtres ne modifient pas le JSON exporté.** L’inventaire complet reste disponible pour les comparaisons. Les cellules longues passent sur plusieurs lignes. Les notes sont repliées à la largeur du terminal ; en mode automatique, aucun code couleur ANSI n’est ajouté aux sorties redirigées.
+
+## Couleurs et lisibilité
+
+Les couleurs s’activent automatiquement dans un terminal compatible : titres violets, états actifs en vert, états arrêtés en jaune et nœuds hors ligne en rouge. Une ressource arrêtée n’est pas considérée comme une panne. Les libellés restent lisibles sans couleur.
+
+```bash
+python3 proxmox_inventory.py --demo --color auto
+python3 proxmox_inventory.py --demo --color never
+```
+
+`--color always` force les couleurs, même dans une redirection. En mode `auto`, les couleurs sont désactivées si la sortie n’est pas un terminal, si `NO_COLOR` est défini ou si `TERM=dumb`. Les JSON restent inchangés. Les dates du terminal sont affichées au format jour/mois/année avec l’heure et le fuseau UTC ; les JSON conservent leurs horodatages ISO.
 
 ## Conserver un historique et suivre les changements
 
