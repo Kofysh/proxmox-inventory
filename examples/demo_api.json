@@ -1,0 +1,12 @@
+{
+  "_notice": "Données entièrement fictives : aucune mesure d'une infrastructure réelle.",
+  "nodes": [
+    {"node": "pve-lab-01", "status": "online", "maxcpu": 8, "maxmem": 34359738368, "mem": 10737418240}
+  ],
+  "resources": [
+    {"vmid": 101, "type": "qemu", "name": "vps-demo-01", "node": "pve-lab-01", "status": "running", "maxcpu": 2, "maxmem": 4294967296, "maxdisk": 42949672960},
+    {"vmid": 102, "type": "qemu", "name": "vps-demo-02", "node": "pve-lab-01", "status": "stopped", "maxcpu": 2, "maxmem": 2147483648, "maxdisk": 21474836480},
+    {"vmid": 201, "type": "lxc", "name": "paymenter-demo", "node": "pve-lab-01", "status": "running", "maxcpu": 2, "maxmem": 2147483648, "maxdisk": 17179869184},
+    {"vmid": 9000, "type": "qemu", "name": "debian-template", "node": "pve-lab-01", "status": "stopped", "template": 1, "maxcpu": 2, "maxmem": 2147483648, "maxdisk": 8589934592}
+  ]
+}
