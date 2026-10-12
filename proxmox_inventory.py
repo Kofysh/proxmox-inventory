@@ -16,12 +16,13 @@ import textwrap
 import ssl
 import sys
 import tempfile
+import uuid
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPSHandler, HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 MAX_RESPONSE_BYTES = 10 * 1024 * 1024
 
 
@@ -433,6 +434,43 @@ def print_comparison(report):
         print_note(warning, "- ")
 
 
+def save_history(report, directory):
+    """Publier ensemble inventaire et comparaison, sans écraser une collecte."""
+    validate_inventory(report)
+    root = Path(directory)
+    lock = root / ".inventory.lock"
+    acquired = False
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+        try:
+            descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError:
+            raise InventoryError("Historique verrouillé : une autre collecte écrit peut-être dans ce dossier. "
+                                 "Si elle a été interrompue, vérifier son arrêt avant de retirer .inventory.lock.") from None
+        acquired = True
+        os.close(descriptor)
+        previous = sorted(path for path in root.glob("run-*") if path.is_dir())
+        comparison = None
+        if previous:
+            before = read_inventory(previous[-1] / "inventory.json")
+            comparison = compare_inventories(before, report)
+        stamp = datetime.fromisoformat(report["generated_at"]).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+        destination = root / ("run-" + stamp + "-" + uuid.uuid4().hex)
+        # Le dossier final ne devient visible qu’une fois tous ses JSON écrits.
+        with tempfile.TemporaryDirectory(prefix=".pending-", dir=root) as staging:
+            stage = Path(staging)
+            write_report(report, stage / "inventory.json")
+            if comparison is not None:
+                write_report(comparison, stage / "comparison.json")
+            stage.rename(destination)
+        return destination, comparison
+    except OSError:
+        raise InventoryError("Impossible d’enregistrer l’historique ; vérifier le chemin, l’espace et les permissions.") from None
+    finally:
+        if acquired:
+            lock.unlink(missing_ok=True)
+
+
 def check_connection(quiet=False):
     """Diagnostic avec les mêmes requêtes et contrôles que la collecte."""
     if not quiet:
@@ -467,6 +505,8 @@ def check_connection(quiet=False):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--history", nargs="?", const="reports/history", metavar="DOSSIER",
+                        help="Conserver une collecte datée et la comparer à la précédente (défaut : reports/history).")
     parser.add_argument("--check", action="store_true", help="Diagnostiquer la connexion et les données API, sans écrire de rapport.")
     parser.add_argument("--quiet", action="store_true", help="Afficher uniquement les erreurs ; conserve les exports et les codes de retour.")
     parser.add_argument("--demo", action="store_true", help="Données fictives locales, sans réseau ni jeton.")
@@ -478,6 +518,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.compare and (args.demo or args.node or args.status):
         parser.error("--compare ne se combine pas avec --demo, --node ou --status.")
+    if args.history is not None and (args.output or args.compare or args.check):
+        parser.error("--history ne se combine pas avec --output, --compare ou --check.")
     if args.check and (args.demo or args.compare or args.node or args.status or args.output):
         parser.error("--check ne se combine qu’avec --quiet.")
     try:
@@ -507,6 +549,20 @@ def main(argv=None):
             resources = client.get("/cluster/resources?type=vm")
             mode, source = "live", client.base_url
         report = build_report(nodes, resources, mode, source)
+        if args.history is not None:
+            folder, comparison = save_history(report, args.history)
+            if not args.quiet:
+                print_summary(report, args.node, args.status)
+                if comparison is not None:
+                    print_comparison(comparison)
+                else:
+                    print_heading("HISTORIQUE")
+                    print_note("Première collecte : référence enregistrée pour la prochaine comparaison.")
+                print_heading("EXPORT")
+                print_note("Inventaire : " + str(folder / "inventory.json"))
+                if comparison is not None:
+                    print_note("Comparaison : " + str(folder / "comparison.json"))
+            return 0
         output = args.output or "reports/inventory.json"
         write_report(report, output)
         if not args.quiet:

@@ -81,3 +81,9 @@ Une recette réelle complémentaire a été effectuée le **13 octobre 2026** su
 **Bilan : 9 exécutions conformes aux résultats attendus**, en comptant séparément les deux collectes. Les codes 1 des tests négatifs sont attendus ; ils ne représentent pas des échecs de recette. L’accès par l’adresse publique reste non fonctionnel depuis le serveur : le test valide le diagnostic de cette erreur, pas une connexion depuis Internet.
 
 Un nouveau jeton de dix minutes a été créé sur le compte de recette existant, avec `PVEAuditor` et séparation des privilèges. Son secret est resté en mémoire et son absence dans les sorties a été vérifiée. Les fichiers bruts et le bilan sont conservés uniquement sur le serveur dans un dossier privé. Aucun invité ni réglage réseau n’a été modifié. Les tests réels de délai dépassé et de changements de configuration restent à effectuer ; les cas correspondants sont couverts par simulation.
+
+## Version 1.3.0 — historique et comparaison automatique
+
+Les **46 tests locaux** passent. Les huit nouveaux tests vérifient la première collecte, la comparaison après changement, la conservation des anciens fichiers, les sources incompatibles et le recul d’horloge, les horodatages identiques, le verrouillage, une erreur d’écriture avant publication, un rapport précédent corrompu, les filtres avec sortie silencieuse et les arguments incompatibles.
+
+Deux collectes de démonstration successives ont également été exécutées avec `--history` : la première enregistre la référence, la seconde produit une comparaison sans changement. La version 1.3.0 n’a pas encore fait l’objet d’une recette réelle ; les résultats Proxmox précédents concernent les commits explicitement indiqués plus haut.

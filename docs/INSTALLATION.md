@@ -152,3 +152,29 @@ python3 proxmox_inventory.py --quiet --output reports/inventory-live.json
 En cas de succès, aucune sortie texte n’est produite. En cas d’échec, `stderr` reste renseigné et le code de retour vaut `1`. Consulter le code de retour avant de réutiliser un rapport : en cas d’échec, un ancien fichier peut toujours exister. Les avertissements restent présents dans le JSON, même en mode silencieux.
 
 `--quiet` fonctionne également avec la démonstration, la comparaison et le diagnostic. Pour `--check --quiet`, aucun rapport n’est créé : le code de retour indique uniquement le succès des vérifications, pas l’absence d’avertissements de visibilité.
+
+## Historique des collectes
+
+```bash
+python3 proxmox_inventory.py --history
+python3 proxmox_inventory.py --history reports/production --quiet
+```
+
+`--history` sans chemin utilise `reports/history`. Chaque collecte réussie crée un dossier `run-<date UTC>-<identifiant unique>` contenant :
+
+| Fichier | Contenu |
+|---|---|
+| `inventory.json` | Inventaire complet de cette collecte |
+| `comparison.json` | Comparaison avec l’inventaire précédent ; absent à la première collecte |
+
+Les dossiers produits par l’outil sont ordonnés par date UTC dans leur nom. Ne pas les renommer. En cas d’horodatages strictement identiques, l’ordre des identifiants départage les dossiers ; éviter plusieurs planifications simultanées pour la même source. Aucun fichier global `latest.json` n’est maintenu.
+
+Un verrou `.inventory.lock` empêche deux écritures simultanées dans le même historique. Les fichiers sont d’abord écrits dans un dossier temporaire puis publiés ensemble par renommage. Une erreur de comparaison ou d’écriture conserve les anciennes collectes et renvoie le code `1`. Un rapport précédent corrompu n’est pas ignoré silencieusement.
+
+Après un arrêt brutal du processus, le verrou ou un dossier `.pending-*` peut subsister. Vérifier qu’aucune collecte n’est encore active avant de retirer manuellement le verrou. Les dossiers temporaires ne sont pas utilisés comme référence.
+
+Utiliser un dossier différent pour chaque origine HTTPS et pour la démonstration. Un changement d’URL, de mode ou un horodatage antérieur au dernier inventaire bloque la nouvelle publication. L’outil ne peut pas détecter une modification des ACL derrière un même jeton : une absence ne prouve jamais une suppression de VM.
+
+`--history` accepte `--demo`, `--quiet`, `--node` et `--status`. Il est incompatible avec `--output`, `--compare` et `--check`. Les filtres ne réduisent ni les JSON ni la comparaison automatique. Le code `0` signifie que l’enregistrement et, si nécessaire, la comparaison ont réussi ; des changements peuvent être présents.
+
+Les fichiers sous `reports/` sont ignorés par Git. Si un autre dossier est choisi, ajouter sa propre exclusion avant tout commit. L’historique n’a pas de purge automatique : prévoir sa conservation et surveiller l’espace disponible. Cette option ne crée aucune tâche cron ni aucun service systemd.

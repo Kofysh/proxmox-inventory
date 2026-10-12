@@ -6,7 +6,7 @@
 
 Nœuds, machines virtuelles et conteneurs · Export JSON · Lecture seule
 
-**Python 3.10+** &nbsp; / &nbsp; **Sans dépendance externe** &nbsp; / &nbsp; **Version 1.2.0**
+**Python 3.10+** &nbsp; / &nbsp; **Sans dépendance externe** &nbsp; / &nbsp; **Version 1.3.0**
 
 [![Tests Python](https://github.com/Kofysh/proxmox-inventory/actions/workflows/tests.yml/badge.svg)](https://github.com/Kofysh/proxmox-inventory/actions/workflows/tests.yml)
 
@@ -26,7 +26,7 @@ Ce dépôt accompagne le **projet 1 de Bachelor 2 à OTERIA**, consacré à une 
 | :--- | :--- | :--- |
 | Nœuds, VM QEMU, conteneurs LXC et modèles | États, vCPU, mémoire et capacité disque déclarée | Rapport JSON horodaté en UTC et résumé dans le terminal |
 
-> **État du projet** — Le mode démonstration et les 38 tests automatisés ont été exécutés avec succès. Une collecte réelle de conteneurs LXC a également réussi en HTTPS local, avec vérification du certificat et jeton en lecture seule. Voir le périmètre exact dans [Validation](docs/VALIDATION.md).
+> **État du projet** — Le mode démonstration et les 46 tests automatisés ont été exécutés avec succès. Une collecte réelle de conteneurs LXC a également réussi en HTTPS local, avec vérification du certificat et jeton en lecture seule. Voir le périmètre exact dans [Validation](docs/VALIDATION.md).
 
 <a id="demarrage-rapide"></a>
 
@@ -74,6 +74,27 @@ python3 proxmox_inventory.py --demo --node pve-lab-01 --status running
 Le terminal présente un résumé, les nœuds, puis les invités regroupés par nœud. Les sections sont espacées, les états sont traduits en français et les tableaux s’adaptent à la largeur disponible (40 à 120 colonnes). `--node` sélectionne un nom de nœud exact ; `--status` accepte `running` ou `stopped` et concerne uniquement les invités. Les modèles sont sélectionnés selon leur état API mais restent identifiés comme modèles.
 
 **Les filtres ne modifient pas le JSON exporté.** L’inventaire complet reste disponible pour les comparaisons. Les cellules longues passent sur plusieurs lignes. Les notes sont repliées à la largeur du terminal ; aucun code couleur ANSI n’est ajouté aux sorties redirigées.
+
+## Conserver un historique et suivre les changements
+
+```bash
+python3 proxmox_inventory.py --history
+```
+
+Chaque exécution conserve un inventaire complet dans un nouveau dossier daté sous `reports/history`. Dès la deuxième collecte, un fichier `comparison.json` décrit les différences avec la précédente ; le bilan apparaît également dans le terminal. La première collecte sert de référence.
+
+Pour essayer avec les données fictives, utiliser un dossier séparé et lancer deux fois la commande :
+
+```bash
+python3 proxmox_inventory.py --demo --history reports/history-demo
+python3 proxmox_inventory.py --demo --history reports/history-demo
+```
+
+Pour les scripts, ajouter `--quiet`. Les filtres `--node` et `--status` concernent l’affichage de l’inventaire uniquement ; l’historique et la comparaison restent complets.
+
+Un dossier d’historique doit correspondre à **une seule source et un seul mode**. La comparaison refuse un mélange ou un retour en arrière de l’horodatage. Les collectes précédentes ne sont jamais écrasées ; aucun ancien rapport n’est supprimé automatiquement. La commande effectue une collecte ponctuelle : elle ne lance pas de surveillance permanente.
+
+[Organisation des fichiers et reprise après interruption](docs/INSTALLATION.md#historique-des-collectes)
 
 ## Comparer deux inventaires
 
@@ -158,7 +179,7 @@ Les redirections HTTP sont refusées. Le secret du jeton n’est inclus ni dans 
 python3 -m unittest discover -s tests -v
 ```
 
-Les **38 tests** couvrent le comptage des ressources, les données manquantes ou invalides, les erreurs d’authentification et de connexion, les paramètres TLS ainsi que l’écriture du rapport. Le transport réseau est simulé : ces tests ne remplacent pas une recette sur le serveur cible.
+Les **46 tests** couvrent le comptage des ressources, les données manquantes ou invalides, les erreurs d’authentification et de connexion, les paramètres TLS ainsi que l’écriture du rapport. Le transport réseau est simulé : ces tests ne remplacent pas une recette sur le serveur cible.
 
 Le workflow GitHub Actions exécute les tests, la démonstration et la comparaison sous **Linux et Windows**, avec Python **3.10, 3.12 et 3.13**, à chaque push sur `main` et à chaque pull request. Le badge affiche son état réel. Aucun secret Proxmox n’est nécessaire.
 
