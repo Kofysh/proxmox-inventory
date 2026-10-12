@@ -1,0 +1,11 @@
+[Unit]
+Description=Collecte quotidienne de l’inventaire Proxmox
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 Europe/Paris
+RandomizedDelaySec=5min
+Persistent=true
+Unit=proxmox-inventory.service
+
+[Install]
+WantedBy=timers.target

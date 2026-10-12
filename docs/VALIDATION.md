@@ -86,4 +86,18 @@ Un nouveau jeton de dix minutes a été créé sur le compte de recette existant
 
 Les **46 tests locaux** passent. Les huit nouveaux tests vérifient la première collecte, la comparaison après changement, la conservation des anciens fichiers, les sources incompatibles et le recul d’horloge, les horodatages identiques, le verrouillage, une erreur d’écriture avant publication, un rapport précédent corrompu, les filtres avec sortie silencieuse et les arguments incompatibles.
 
-Deux collectes de démonstration successives ont également été exécutées avec `--history` : la première enregistre la référence, la seconde produit une comparaison sans changement. La version 1.3.0 n’a pas encore fait l’objet d’une recette réelle ; les résultats Proxmox précédents concernent les commits explicitement indiqués plus haut.
+Deux collectes de démonstration successives ont également été exécutées avec `--history` : la première enregistre la référence, la seconde produit une comparaison sans changement. Une recette réelle de la version 1.3.0 a ensuite été effectuée le 13 octobre 2026, avec le code du commit `75f008a58f34cb4436f25c504bdbebdea761e9b7` et une empreinte SHA-256 contrôlée avant exécution.
+
+| Essai sur Proxmox | Résultat |
+|---|---|
+| Validation des unités par `systemd-analyze verify` | Réussie |
+| Première collecte via le service et son compte dynamique | Inventaire créé sans comparaison |
+| Deuxième collecte via le service | Comparaison créée, aucun changement |
+| Conservation du premier inventaire | Contenu strictement identique |
+| Verrou préexistant | Échec attendu du service, aucun nouveau rapport publié |
+| Retrait du verrou de test et nouvelle exécution | Reprise réussie, troisième collecte publiée |
+| État final du service | `Result=success`, `ExecMainStatus=0`, `DynamicUser=yes` |
+
+Le secret de recette a été placé dans `/run` pour être transmis par `LoadCredential`, puis ce fichier et la surcharge systemd temporaire ont été retirés. Le jeton de test expire après dix minutes. Les rapports réels restent sur le serveur. Aucun invité ni réglage réseau n’a été modifié.
+
+Les unités sont installées sur le serveur testé, mais le timer n’est pas activé : son exploitation quotidienne nécessite un accès Proxmox durable distinct du compte de recette expirant le 14 octobre. Les sources et les instructions reproductibles sont disponibles dans `deploy/` et [Automatisation](AUTOMATISATION.md).

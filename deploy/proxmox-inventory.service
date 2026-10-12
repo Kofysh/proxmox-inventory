@@ -1,0 +1,29 @@
+[Unit]
+Description=Inventaire Proxmox en lecture seule
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+User=proxmox-inventory
+StateDirectory=proxmox-inventory
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/proxmox-inventory
+EnvironmentFile=/etc/proxmox-inventory/pve.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+LoadCredential=pve-token:/etc/proxmox-inventory/token
+ExecStart=/usr/bin/python3 /opt/proxmox-inventory/scheduled_inventory.py
+TimeoutStartSec=5min
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=

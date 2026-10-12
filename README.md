@@ -96,6 +96,12 @@ Un dossier d’historique doit correspondre à **une seule source et un seul mod
 
 [Organisation des fichiers et reprise après interruption](docs/INSTALLATION.md#historique-des-collectes)
 
+## Planifier une collecte quotidienne
+
+Le dossier `deploy/` contient un service et un timer systemd : exécution sous un compte isolé, historique privé et secret chargé par systemd. L’horaire proposé est **04:00 Europe/Paris**, avec un décalage de zéro à cinq minutes.
+
+**[Guide d’installation et d’exploitation](docs/AUTOMATISATION.md)** — configuration, activation, journaux et désactivation. La présence de ces fichiers dans le dépôt n’active aucun service à elle seule.
+
 ## Comparer deux inventaires
 
 ```bash
