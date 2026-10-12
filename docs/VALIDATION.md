@@ -65,4 +65,19 @@ L’outil ne démontre pas que l’ensemble de la plateforme VPS est sécurisé.
 
 La suite locale comporte **38 tests**, tous réussis. Les huit nouveaux tests couvrent la classification des exceptions réseau directes et encapsulées, la suppression des détails privés, les deux routes du diagnostic, l’absence d’écriture, les données invalides, les listes vides, l’arrêt au premier échec, les combinaisons d’arguments interdites et les exports silencieux.
 
-Ces nouvelles fonctions sont validées avec un transport simulé. La recette réelle décrite plus haut concerne le commit indiqué dans cette section ; elle n’a pas été répétée avec la version 1.2.0. Aucun nouveau compte ou jeton Proxmox n’a été créé pour cette mise à jour.
+Une recette réelle complémentaire a été effectuée le **13 octobre 2026** sur Proxmox VE 9.2.21, avec le code exact du commit `9ba5f34b4fc6837dcdf741c5390884988d7a5e20` (empreinte SHA-256 vérifiée avant exécution). Les commandes ont été exécutées en processus CLI séparés, avec les variables d’environnement de connexion.
+
+| Essai réel | Résultat | Code de sortie |
+|---|---|---|
+| `--check` en HTTPS local avec autorité interne | Diagnostic réussi ; aucun dossier de rapport créé | 0 |
+| `--check --quiet` | Réussi ; sortie standard vide | 0 |
+| Deux collectes `--quiet --output` | Deux JSON live lisibles ; sorties standard vides | 0 pour chaque collecte |
+| `--compare ... --quiet --output` | JSON de comparaison lisible, aucun changement ; sortie standard vide | 0 |
+| Secret volontairement invalide | Authentification refusée, HTTP 401 sur stderr | 1 |
+| Adresse publique depuis le serveur | Connexion refusée correctement identifiée sur stderr | 1 |
+| Nom DNS de test sous `.invalid` | Échec DNS correctement identifié sur stderr | 1 |
+| Autorité interne retirée de la configuration cliente | Certificat refusé, vérification TLS maintenue | 1 |
+
+**Bilan : 9 exécutions conformes aux résultats attendus**, en comptant séparément les deux collectes. Les codes 1 des tests négatifs sont attendus ; ils ne représentent pas des échecs de recette. L’accès par l’adresse publique reste non fonctionnel depuis le serveur : le test valide le diagnostic de cette erreur, pas une connexion depuis Internet.
+
+Un nouveau jeton de dix minutes a été créé sur le compte de recette existant, avec `PVEAuditor` et séparation des privilèges. Son secret est resté en mémoire et son absence dans les sorties a été vérifiée. Les fichiers bruts et le bilan sont conservés uniquement sur le serveur dans un dossier privé. Aucun invité ni réglage réseau n’a été modifié. Les tests réels de délai dépassé et de changements de configuration restent à effectuer ; les cas correspondants sont couverts par simulation.
