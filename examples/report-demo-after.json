@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "tool_version": "1.1.0",
+  "generated_at": "2026-10-12T22:44:27.796746+00:00",
+  "mode": "demo",
+  "source": "jeu de données fictif local",
+  "collection_status": "completed",
+  "scope": "synthetic_dataset",
+  "summary": {
+    "nodes": 1,
+    "guests": 3,
+    "running": 1,
+    "stopped": 2,
+    "other_states": 0,
+    "templates": 1
+  },
+  "nodes": [
+    {
+      "name": "pve-lab-01",
+      "status": "online",
+      "cpu_count": 8,
+      "memory_total_bytes": 34359738368,
+      "memory_used_bytes": 10737418240
+    }
+  ],
+  "guests": [
+    {
+      "vmid": 101,
+      "name": "vps-demo-01",
+      "node": "pve-lab-01",
+      "type": "qemu",
+      "status": "stopped",
+      "is_template": false,
+      "vcpu": 2,
+      "memory_allocated_bytes": 8589934592,
+      "disk_reported_bytes": 42949672960
+    },
+    {
+      "vmid": 201,
+      "name": "paymenter-demo",
+      "node": "pve-lab-01",
+      "type": "lxc",
+      "status": "running",
+      "is_template": false,
+      "vcpu": 2,
+      "memory_allocated_bytes": 2147483648,
+      "disk_reported_bytes": 17179869184
+    },
+    {
+      "vmid": 301,
+      "name": "vps-demo-03",
+      "node": "pve-lab-01",
+      "type": "qemu",
+      "status": "stopped",
+      "is_template": false,
+      "vcpu": 2,
+      "memory_allocated_bytes": 8589934592,
+      "disk_reported_bytes": 42949672960
+    },
+    {
+      "vmid": 9000,
+      "name": "debian-template",
+      "node": "pve-lab-01",
+      "type": "qemu",
+      "status": "stopped",
+      "is_template": true,
+      "vcpu": 2,
+      "memory_allocated_bytes": 2147483648,
+      "disk_reported_bytes": 8589934592
+    }
+  ],
+  "warnings": [
+    "L'inventaire est limité aux ressources visibles par le jeton ; son exhaustivité n'est pas vérifiée."
+  ],
+  "limitations": [
+    "Ce rapport ne constitue pas un audit de sécurité.",
+    "disk_reported_bytes reprend maxdisk ; ce n'est pas la somme garantie de tous les disques.",
+    "Aucune validation de Paymenter, du paiement ou du provisionnement n'est effectuée."
+  ]
+}

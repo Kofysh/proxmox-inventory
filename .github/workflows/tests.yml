@@ -1,0 +1,38 @@
+name: Tests Python
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Python ${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12', '3.13']
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Installer Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Exécuter les tests
+        run: python -m unittest discover -s tests -v
+      - name: Vérifier la démonstration
+        run: python proxmox_inventory.py --demo --output reports/demo.json
+      - name: Vérifier la comparaison hors ligne
+        run: python proxmox_inventory.py --compare reports/demo.json reports/demo.json --output reports/comparison.json

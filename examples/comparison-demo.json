@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "report_type": "comparison",
+  "tool_version": "1.1.0",
+  "generated_at": "2026-10-12T22:44:27.840691+00:00",
+  "mode": "demo",
+  "source": "jeu de données fictif local",
+  "before_at": "2026-10-12T22:44:27.750878+00:00",
+  "after_at": "2026-10-12T22:44:27.796746+00:00",
+  "warnings": [
+    "Une ressource absente peut être masquée par les droits du jeton ; son absence ne prouve pas sa suppression.",
+    "Un VMID réutilisé ne permet pas de distinguer une recréation d’une modification."
+  ],
+  "nodes": {
+    "added": [],
+    "removed": [],
+    "changed": []
+  },
+  "guests": {
+    "added": [
+      {
+        "vmid": 301,
+        "name": "vps-demo-03",
+        "node": "pve-lab-01",
+        "type": "qemu",
+        "status": "stopped",
+        "is_template": false,
+        "vcpu": 2,
+        "memory_allocated_bytes": 8589934592,
+        "disk_reported_bytes": 42949672960
+      }
+    ],
+    "removed": [
+      {
+        "vmid": 102,
+        "name": "vps-demo-02",
+        "node": "pve-lab-01",
+        "type": "qemu",
+        "status": "stopped",
+        "is_template": false,
+        "vcpu": 2,
+        "memory_allocated_bytes": 2147483648,
+        "disk_reported_bytes": 21474836480
+      }
+    ],
+    "changed": [
+      {
+        "vmid": 101,
+        "changes": {
+          "status": {
+            "before": "running",
+            "after": "stopped"
+          },
+          "memory_allocated_bytes": {
+            "before": 4294967296,
+            "after": 8589934592
+          }
+        }
+      }
+    ]
+  },
+  "has_changes": true
+}

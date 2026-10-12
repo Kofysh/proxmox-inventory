@@ -10,7 +10,7 @@ import proxmox_inventory as app
 
 ENV = {"PVE_URL": "https://pve.example.net:8006", "PVE_TOKEN_ID": "inventory@pve!test",
        "PVE_TOKEN_SECRET": "secret-only-for-tests"}
-FIXTURE = json.loads((Path(__file__).resolve().parents[1] / "examples/demo_api.json").read_text())
+FIXTURE = json.loads((Path(__file__).resolve().parents[1] / "examples/demo_api.json").read_text(encoding='utf-8'))
 
 class InventoryTests(unittest.TestCase):
     def report(self):
@@ -103,8 +103,8 @@ class InventoryTests(unittest.TestCase):
             with patch('sys.stdout', new_callable=io.StringIO):
                 self.assertEqual(app.main(['--demo', '--output', str(output)]), 0)
             client.assert_not_called()
-            self.assertEqual(json.loads(output.read_text())['mode'], 'demo')
-            self.assertNotIn('secret', output.read_text())
+            self.assertEqual(json.loads(output.read_text(encoding='utf-8'))['mode'], 'demo')
+            self.assertNotIn('secret', output.read_text(encoding='utf-8'))
 
     def test_failed_collection_preserves_old_report(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(app, 'ProxmoxClient') as client:
@@ -113,7 +113,7 @@ class InventoryTests(unittest.TestCase):
             client.return_value.get.side_effect = [FIXTURE['nodes'], app.InventoryError('échec')]
             with patch('sys.stderr', new_callable=io.StringIO):
                 self.assertEqual(app.main(['--output', str(output)]), 1)
-            self.assertEqual(output.read_text(), 'previous report')
+            self.assertEqual(output.read_text(encoding='utf-8'), 'previous report')
 
     def test_output_failure(self):
         with tempfile.TemporaryDirectory() as directory:

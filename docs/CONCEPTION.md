@@ -49,4 +49,10 @@ Le projet principal porte sur une plateforme VPS reposant sur Proxmox et Payment
 
 Cette base a été produite avec l’assistance de ChatGPT. Pour la présenter, comprendre les fonctions, adapter la configuration, réaliser la recette et documenter les modifications effectivement effectuées. Ne pas attribuer à ce livrable le développement de Paymenter ou de son plugin ; respecter les règles de l’établissement concernant l’assistance IA.
 
-Évolutions possibles après validation : comparaison de deux inventaires, export CSV, suivi d’une liste de VM attendues. Une extension au contrôle des sauvegardes demanderait de nouvelles routes, de nouveaux critères et des tests adaptés.
+La version 1.1 ajoute la comparaison hors ligne et les filtres d’affichage. Évolutions possibles après validation : export CSV et suivi d’une liste de VM attendues. Une extension au contrôle des sauvegardes demanderait de nouvelles routes, de nouveaux critères et des tests adaptés.
+
+## Comparaison des inventaires
+
+`read_inventory()` charge un JSON avec une limite de taille. `validate_inventory()` vérifie son schéma, les identités uniques et les données nécessaires. `compare_inventories()` compare les nœuds par nom et les invités par VMID, ce qui permet de conserver l’identité d’un invité lors d’une migration. Les champs de consommation instantanée sont exclus des changements pour limiter le bruit.
+
+Les filtres sont appliqués dans `print_summary()` après la collecte et l’export ; ils ne créent donc pas d’inventaires partiels. Le workflow CI vérifie les comportements hors réseau sur plusieurs versions Python et deux systèmes d’exploitation.

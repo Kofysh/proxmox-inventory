@@ -6,7 +6,9 @@
 
 Nœuds, machines virtuelles et conteneurs · Export JSON · Lecture seule
 
-**Python 3.10+** &nbsp; / &nbsp; **Sans dépendance externe** &nbsp; / &nbsp; **Version 1.0.0**
+**Python 3.10+** &nbsp; / &nbsp; **Sans dépendance externe** &nbsp; / &nbsp; **Version 1.1.0**
+
+[![Tests Python](https://github.com/Kofysh/proxmox-inventory/actions/workflows/tests.yml/badge.svg)](https://github.com/Kofysh/proxmox-inventory/actions/workflows/tests.yml)
 
 [Démarrage rapide](#demarrage-rapide) · [Configuration](docs/INSTALLATION.md) · [Validation](docs/VALIDATION.md)
 
@@ -24,7 +26,7 @@ Ce dépôt accompagne le **projet 1 de Bachelor 2 à OTERIA**, consacré à une 
 | :--- | :--- | :--- |
 | Nœuds, VM QEMU, conteneurs LXC et modèles | États, vCPU, mémoire et capacité disque déclarée | Rapport JSON horodaté en UTC et résumé dans le terminal |
 
-> **État du projet** — Le mode démonstration et les 15 tests automatisés ont été exécutés avec succès. La connexion à l’infrastructure Proxmox réelle reste à valider.
+> **État du projet** — Le mode démonstration et les 30 tests automatisés ont été exécutés avec succès. La connexion à l’infrastructure Proxmox réelle reste à valider.
 
 <a id="demarrage-rapide"></a>
 
@@ -33,8 +35,8 @@ Ce dépôt accompagne le **projet 1 de Bachelor 2 à OTERIA**, consacré à une 
 Python **3.10 ou supérieur** suffit. Aucun paquet supplémentaire n’est nécessaire.
 
 ```bash
-git clone https://github.com/Kofysh/proxmox-inventory-b2.git
-cd proxmox-inventory-b2
+git clone https://github.com/Kofysh/proxmox-inventory.git
+cd proxmox-inventory
 python3 proxmox_inventory.py --demo
 ```
 
@@ -62,6 +64,38 @@ Le jeu de démonstration contient un nœud, trois invités et un modèle :
 Les modèles sont comptés séparément des invités arrêtés. Une métrique absente reste `null` dans le JSON ; elle n’est pas remplacée par zéro.
 
 [Voir le rapport JSON](examples/report-demo.json) · [Voir la sortie du terminal](examples/console-demo.txt)
+
+## Filtrer l’affichage
+
+```bash
+python3 proxmox_inventory.py --demo --node pve-lab-01 --status running
+```
+
+Le terminal affiche désormais les nœuds et leurs ressources dans un tableau, puis les invités. `--node` sélectionne un nom de nœud exact ; `--status` accepte `running` ou `stopped` et concerne uniquement les invités. Les modèles sont sélectionnés selon leur état API mais restent identifiés comme modèles.
+
+**Les filtres ne modifient pas le JSON exporté.** L’inventaire complet reste disponible pour les comparaisons. Les noms longs sont tronqués à 32 caractères dans le tableau du terminal uniquement.
+
+## Comparer deux inventaires
+
+```bash
+python3 proxmox_inventory.py --compare reports/avant.json reports/apres.json
+```
+
+Cette commande fonctionne hors ligne, sans jeton ni connexion à Proxmox. Elle écrit `reports/comparison.json` et signale les ressources nouvellement visibles, absentes ou modifiées. Un changement de nœud pour un même VMID apparaît comme une migration, et non comme une suppression suivie d’une création.
+
+Les changements suivis comprennent les états, les noms, le type, le statut de modèle, les vCPU, la mémoire attribuée et la capacité disque déclarée. Pour les nœuds, l’état et la capacité CPU/RAM sont comparés ; l’utilisation instantanée de mémoire est ignorée.
+
+Une démonstration reproductible est fournie :
+
+```bash
+python3 proxmox_inventory.py --compare examples/report-demo.json examples/report-demo-after.json
+```
+
+[Voir les différences attendues](examples/comparison-demo.json)
+
+Les deux rapports doivent partager la même source et le même mode, utiliser le schéma v1 et être fournis dans l’ordre chronologique. Un rapport de comparaison ne peut pas servir d’inventaire d’entrée. La destination ne peut pas être l’un des fichiers comparés. Un code de sortie `0` signifie que la comparaison a réussi, même si elle trouve des changements.
+
+> Une ressource absente peut simplement être devenue invisible à cause des ACL. La comparaison ne prouve pas sa suppression. Un VMID réutilisé ne permet pas non plus d’identifier avec certitude une recréation.
 
 ## Connexion à Proxmox
 
@@ -105,7 +139,9 @@ Les redirections HTTP sont refusées. Le secret du jeton n’est inclus ni dans 
 python3 -m unittest discover -s tests -v
 ```
 
-Les **15 tests** couvrent le comptage des ressources, les données manquantes ou invalides, les erreurs d’authentification et de connexion, les paramètres TLS ainsi que l’écriture du rapport. Le transport réseau est simulé : ces tests ne remplacent pas une recette sur le serveur cible.
+Les **30 tests** couvrent le comptage des ressources, les données manquantes ou invalides, les erreurs d’authentification et de connexion, les paramètres TLS ainsi que l’écriture du rapport. Le transport réseau est simulé : ces tests ne remplacent pas une recette sur le serveur cible.
+
+Le workflow GitHub Actions exécute les tests, la démonstration et la comparaison sous **Linux et Windows**, avec Python **3.10, 3.12 et 3.13**, à chaque push sur `main` et à chaque pull request. Le badge affiche son état réel. Aucun secret Proxmox n’est nécessaire.
 
 Le [document de validation](docs/VALIDATION.md) précise les vérifications réalisées et celles restant à effectuer.
 
@@ -114,7 +150,8 @@ Le [document de validation](docs/VALIDATION.md) précise les vérifications réa
 | Fichier | Contenu |
 | :--- | :--- |
 | [`proxmox_inventory.py`](proxmox_inventory.py) | Client API, traitement des données, export et interface en ligne de commande |
-| [`tests/test_inventory.py`](tests/test_inventory.py) | Tests automatisés |
+| [`tests/`](tests/) | Tests de collecte, comparaison, filtres et erreurs |
+| [`.github/workflows/tests.yml`](.github/workflows/tests.yml) | Vérifications automatiques Linux / Windows |
 | [`examples/`](examples/) | Données fictives et exemples de résultats |
 | [`docs/INSTALLATION.md`](docs/INSTALLATION.md) | Configuration et utilisation sur Proxmox |
 | [`docs/CONCEPTION.md`](docs/CONCEPTION.md) | Choix techniques et présentation du fonctionnement |

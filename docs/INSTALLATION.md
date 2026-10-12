@@ -85,7 +85,7 @@ Le fichier de destination est remplacé atomiquement après une collecte réussi
 
 | Code de sortie | Sens |
 |---|---|
-| `0` | Collecte et écriture réussies, même si des avertissements existent |
+| `0` | Collecte ou comparaison réussie, même si des avertissements ou différences existent |
 | `1` | Erreur de configuration, collecte ou écriture |
 | `2` | Arguments de ligne de commande invalides |
 | `130` | Interruption au clavier |
@@ -107,3 +107,14 @@ Le fichier de destination est remplacé atomiquement après une collecte réussi
 - [API Proxmox VE](https://pve.proxmox.com/wiki/Proxmox_VE_API)
 - [Gestion des utilisateurs et des permissions](https://pve.proxmox.com/pve-docs/pveum-plain.html)
 - [Référence des routes API](https://pve.proxmox.com/pve-docs/api-viewer/index.html)
+
+## Filtres et comparaison
+
+```bash
+python3 proxmox_inventory.py --node pve-lab-01 --status running
+python3 proxmox_inventory.py --compare reports/avant.json reports/apres.json --output reports/ecarts.json
+```
+
+Les filtres concernent uniquement le terminal ; le JSON conserve l’inventaire complet. `--compare` est un mode hors ligne, incompatible avec `--demo`, `--node` et `--status`. L’ordre des fichiers est ancien puis nouveau. Le mode comparaison utilise `reports/comparison.json` comme destination par défaut.
+
+Pour conserver plusieurs mesures réelles, choisir un nom distinct à chaque collecte avec `--output`. Les rapports doivent provenir de la même URL et du même périmètre d’accès ; le logiciel vérifie l’URL et le mode mais ne peut pas vérifier que les ACL sont restées identiques.

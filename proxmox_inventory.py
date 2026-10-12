@@ -17,7 +17,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPSHandler, HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 MAX_RESPONSE_BYTES = 10 * 1024 * 1024
 
 
@@ -203,30 +203,173 @@ def gib(value):
     return "n/d" if value is None else f"{value / 1024**3:.1f} Gio"
 
 
-def print_summary(report):
+def print_table(headers, rows):
+    rows = [[safe(value) for value in row] for row in rows]
+    if not rows:
+        print("Aucune ressource ne correspond à la sélection.")
+        return
+    widths = [max(len(title), *(len(row[i]) for row in rows)) for i, title in enumerate(headers)]
+    widths = [min(width, 32) for width in widths]
+    for row in [headers, *rows]:
+        print("  ".join(value[:width].ljust(width) for value, width in zip(row, widths)))
+
+
+def print_summary(report, node=None, status=None):
     print(f"PROXMOX INVENTORY | {report['mode'].upper()} | lecture seule")
     if report["mode"] == "demo":
         print("DONNÉES FICTIVES — aucune connexion à un serveur.")
     s = report["summary"]
-    print(f"{s['nodes']} nœud(s) | {s['guests']} invité(s) | {s['running']} actif(s) | "
-          f"{s['stopped']} arrêté(s) | {s['templates']} modèle(s)")
-    print("\nVMID | TYPE | NOM | NŒUD | ÉTAT | vCPU | RAM attribuée | DISQUE déclaré")
-    for guest in report["guests"]:
-        print(" | ".join(safe(v) for v in [guest["vmid"], guest["type"], guest["name"] or "n/d",
-              guest["node"], "modèle" if guest["is_template"] else (guest["status"] or "inconnu"),
-              guest["vcpu"] if guest["vcpu"] is not None else "n/d",
-              gib(guest["memory_allocated_bytes"]), gib(guest["disk_reported_bytes"])]))
+    print(f"Inventaire complet : {s['nodes']} nœud(s) | {s['guests']} invité(s) | "
+          f"{s['running']} actif(s) | {s['stopped']} arrêté(s) | {s['templates']} modèle(s)")
+    nodes = [n for n in report["nodes"] if node is None or n["name"] == node]
+    guests = [g for g in report["guests"] if (node is None or g["node"] == node)
+              and (status is None or g["status"] == status)]
+    if node or status:
+        print("Filtres d’affichage : nœud=" + safe(node or "tous") + "; état=" + safe(status or "tous"))
+        print("Le rapport JSON conserve l’inventaire complet.")
+    print("\nNŒUDS")
+    print_table(["NŒUD", "ÉTAT", "CPU", "RAM utilisée", "RAM totale"], [
+        [n["name"], n["status"] or "inconnu", n["cpu_count"] if n["cpu_count"] is not None else "n/d",
+         gib(n["memory_used_bytes"]), gib(n["memory_total_bytes"])] for n in nodes])
+    print("\nINVITÉS")
+    print_table(["VMID", "TYPE", "NOM", "NŒUD", "ÉTAT", "vCPU", "RAM", "DISQUE déclaré"], [
+        [g["vmid"], g["type"], g["name"] or "n/d", g["node"],
+         "modèle" if g["is_template"] else (g["status"] or "inconnu"),
+         g["vcpu"] if g["vcpu"] is not None else "n/d",
+         gib(g["memory_allocated_bytes"]), gib(g["disk_reported_bytes"])] for g in guests])
     for warning in report["warnings"]:
         print("NOTE : " + safe(warning))
+
+
+def read_inventory(path):
+    """Charge uniquement les rapports complets compatibles avec le schéma v1."""
+    try:
+        with Path(path).open("rb") as handle:
+            raw = handle.read(MAX_RESPONSE_BYTES + 1)
+        if len(raw) > MAX_RESPONSE_BYTES:
+            raise InventoryError("Rapport trop volumineux (limite : 10 Mio).")
+        report = json.loads(raw)
+    except (OSError, ValueError, UnicodeError):
+        raise InventoryError("Impossible de lire l’un des inventaires JSON.") from None
+    validate_inventory(report)
+    return report
+
+
+def validate_inventory(report):
+    if not isinstance(report, dict) or type(report.get("schema_version")) is not int or report["schema_version"] != 1:
+        raise InventoryError("Schéma d’inventaire non pris en charge (version 1 attendue).")
+    mode = report.get("mode")
+    if mode not in ("demo", "live") or report.get("collection_status") != "completed":
+        raise InventoryError("La comparaison exige deux inventaires terminés.")
+    expected_scope = "synthetic_dataset" if mode == "demo" else "resources_visible_to_token"
+    if report.get("scope") != expected_scope or report.get("filters"):
+        raise InventoryError("La comparaison exige des inventaires complets, sans filtrage.")
+    text_field(report, "source", True)
+    try:
+        stamp = datetime.fromisoformat(text_field(report, "generated_at", True))
+        if stamp.tzinfo is None:
+            raise ValueError
+    except ValueError:
+        raise InventoryError("Horodatage d’inventaire invalide ou sans fuseau horaire.") from None
+    for collection in ("nodes", "guests"):
+        rows = report.get(collection)
+        if not isinstance(rows, list):
+            raise InventoryError("Liste de ressources absente dans l’inventaire.")
+        identities = set()
+        for row in rows:
+            if not isinstance(row, dict):
+                raise InventoryError("Ressource invalide dans l’inventaire.")
+            if collection == "nodes":
+                identity = text_field(row, "name", True)
+                text_field(row, "status")
+                for field in ("cpu_count", "memory_total_bytes", "memory_used_bytes"):
+                    number(row, field, True)
+            else:
+                identity = number(row, "vmid", True)
+                if identity is None or row.get("type") not in ("qemu", "lxc") or type(row.get("is_template")) is not bool:
+                    raise InventoryError("Identité d’invité invalide dans l’inventaire.")
+                text_field(row, "node", True)
+                text_field(row, "name")
+                text_field(row, "status")
+                for field in ("vcpu", "memory_allocated_bytes", "disk_reported_bytes"):
+                    number(row, field, True)
+            if identity in identities:
+                raise InventoryError("Identité de ressource dupliquée dans l’inventaire.")
+            identities.add(identity)
+
+
+def compare_inventories(before, after):
+    for report in (before, after):
+        validate_inventory(report)
+    if (before["mode"], before["source"]) != (after["mode"], after["source"]):
+        raise InventoryError("Les deux inventaires doivent provenir de la même source et du même mode.")
+    if datetime.fromisoformat(before["generated_at"]) > datetime.fromisoformat(after["generated_at"]):
+        raise InventoryError("Le premier inventaire doit être antérieur ou égal au second.")
+    result = {"schema_version": 1, "report_type": "comparison", "tool_version": VERSION,
+              "generated_at": datetime.now(timezone.utc).isoformat(), "mode": after["mode"],
+              "source": after["source"], "before_at": before["generated_at"], "after_at": after["generated_at"],
+              "warnings": ["Une ressource absente peut être masquée par les droits du jeton ; son absence ne prouve pas sa suppression.",
+                           "Un VMID réutilisé ne permet pas de distinguer une recréation d’une modification."]}
+    fields = {"nodes": ("status", "cpu_count", "memory_total_bytes"),
+              "guests": ("name", "node", "type", "status", "is_template", "vcpu",
+                         "memory_allocated_bytes", "disk_reported_bytes")}
+    for kind, tracked in fields.items():
+        identity = "name" if kind == "nodes" else "vmid"
+        old = {r[identity]: r for r in before[kind]}
+        new = {r[identity]: r for r in after[kind]}
+        changes = []
+        for key in sorted(old.keys() & new.keys()):
+            changed = {f: {"before": old[key].get(f), "after": new[key].get(f)}
+                       for f in tracked if old[key].get(f) != new[key].get(f)}
+            if changed:
+                changes.append({identity: key, "changes": changed})
+        result[kind] = {"added": [new[k] for k in sorted(new.keys() - old.keys())],
+                        "removed": [old[k] for k in sorted(old.keys() - new.keys())], "changed": changes}
+    result["has_changes"] = any(result[k][category] for k in fields for category in ("added", "removed", "changed"))
+    return result
+
+
+def print_comparison(report):
+    print("COMPARAISON D’INVENTAIRES | " + report["mode"].upper())
+    print(safe(report["before_at"]) + " → " + safe(report["after_at"]))
+    for kind, label in (("nodes", "Nœuds"), ("guests", "Invités")):
+        delta = report[kind]
+        print(f"{label} : {len(delta['added'])} nouvellement visible(s), "
+              f"{len(delta['removed'])} absent(s), {len(delta['changed'])} modifié(s)")
+        key = "name" if kind == "nodes" else "vmid"
+        for category in ("added", "removed"):
+            for row in delta[category]:
+                print("  " + ("Visible : " if category == "added" else "Absent : ") + safe(row[key]))
+        for row in delta["changed"]:
+            for field, values in row["changes"].items():
+                print(f"  {safe(row[key])} / {field} : {safe(values['before'])} → {safe(values['after'])}")
+    if not report["has_changes"]:
+        print("Aucun changement sur les champs suivis.")
+    for warning in report["warnings"]:
+        print("NOTE : " + warning)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--demo", action="store_true", help="Données fictives locales, sans réseau ni jeton.")
-    parser.add_argument("--output", default="reports/inventory.json", help="Rapport JSON (écriture atomique).")
+    parser.add_argument("--output", help="Destination JSON ; par défaut reports/inventory.json ou reports/comparison.json.")
+    parser.add_argument("--compare", nargs=2, metavar=("AVANT", "APRES"), help="Comparer deux rapports locaux, sans réseau.")
+    parser.add_argument("--node", help="Filtrer le résumé du terminal par nom de nœud.")
+    parser.add_argument("--status", choices=("running", "stopped"), help="Filtrer les invités affichés par état.")
     parser.add_argument("--version", action="version", version=VERSION)
     args = parser.parse_args(argv)
+    if args.compare and (args.demo or args.node or args.status):
+        parser.error("--compare ne se combine pas avec --demo, --node ou --status.")
     try:
+        if args.compare:
+            output = args.output or "reports/comparison.json"
+            if any(Path(output).resolve() == Path(p).resolve() for p in args.compare):
+                raise InventoryError("La destination ne doit pas écraser un inventaire comparé.")
+            comparison = compare_inventories(*(read_inventory(p) for p in args.compare))
+            write_report(comparison, output)
+            print_comparison(comparison)
+            print("\nRapport JSON : " + safe(output))
+            return 0
         if args.demo:
             try:
                 fixture = json.loads((Path(__file__).parent / "examples/demo_api.json").read_text(encoding="utf-8"))
@@ -240,9 +383,10 @@ def main(argv=None):
             resources = client.get("/cluster/resources?type=vm")
             mode, source = "live", client.base_url
         report = build_report(nodes, resources, mode, source)
-        write_report(report, args.output)
-        print_summary(report)
-        print("\nRapport JSON : " + safe(args.output))
+        output = args.output or "reports/inventory.json"
+        write_report(report, output)
+        print_summary(report, args.node, args.status)
+        print("\nRapport JSON : " + safe(output))
         return 0
     except InventoryError as exc:
         print("ERREUR : " + str(exc), file=sys.stderr)
