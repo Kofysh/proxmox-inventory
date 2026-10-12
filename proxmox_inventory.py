@@ -9,6 +9,8 @@ import math
 import os
 from pathlib import Path
 import re
+import shutil
+import textwrap
 import ssl
 import sys
 import tempfile
@@ -203,42 +205,81 @@ def gib(value):
     return "n/d" if value is None else f"{value / 1024**3:.1f} Gio"
 
 
+def terminal_width():
+    return max(40, min(shutil.get_terminal_size((80, 24)).columns, 120))
+
+
+def print_note(message, prefix="  "):
+    print(textwrap.fill(safe(message), width=terminal_width(),
+                        initial_indent=prefix, subsequent_indent="  "))
+
+
+def print_heading(title):
+    print("\n" + title)
+    print("-" * terminal_width())
+
+
 def print_table(headers, rows):
     rows = [[safe(value) for value in row] for row in rows]
     if not rows:
-        print("Aucune ressource ne correspond à la sélection.")
+        print("  Aucune ressource ne correspond à la sélection.")
         return
-    widths = [max(len(title), *(len(row[i]) for row in rows)) for i, title in enumerate(headers)]
-    widths = [min(width, 32) for width in widths]
-    for row in [headers, *rows]:
-        print("  ".join(value[:width].ljust(width) for value, width in zip(row, widths)))
+    headers = [safe(value) for value in headers]
+    widths = [min(28, max(len(title), *(len(row[i]) for row in rows)))
+              for i, title in enumerate(headers)]
+    available = terminal_width() - 2 * (len(headers) - 1)
+    while sum(widths) > available:
+        widest = max(range(len(widths)), key=widths.__getitem__)
+        widths[widest] -= 1
+    for index, row in enumerate([headers, *rows]):
+        cells = [textwrap.wrap(value, width=width) or [""]
+                 for value, width in zip(row, widths)]
+        for line in range(max(map(len, cells))):
+            print("  ".join((cell[line] if line < len(cell) else "").ljust(width)
+                            for cell, width in zip(cells, widths)).rstrip())
+        if index == 0:
+            print("  ".join("-" * width for width in widths))
+
+
+def display_status(value):
+    return {"online": "en ligne", "offline": "hors ligne", "running": "actif",
+            "stopped": "arrêté", None: "inconnu"}.get(value, value)
 
 
 def print_summary(report, node=None, status=None):
-    print(f"PROXMOX INVENTORY | {report['mode'].upper()} | lecture seule")
+    print_heading("PROXMOX INVENTORY  /  " + report["mode"].upper())
+    print_note("Lecture seule | " + report["generated_at"])
     if report["mode"] == "demo":
-        print("DONNÉES FICTIVES — aucune connexion à un serveur.")
+        print_note("Données fictives — aucune connexion à un serveur.")
     s = report["summary"]
-    print(f"Inventaire complet : {s['nodes']} nœud(s) | {s['guests']} invité(s) | "
-          f"{s['running']} actif(s) | {s['stopped']} arrêté(s) | {s['templates']} modèle(s)")
+    print_heading("VUE D’ENSEMBLE")
+    print_note(f"{s['nodes']} nœud(s) • {s['guests']} invité(s) • {s['templates']} modèle(s)")
+    print_note(f"{s['running']} actif(s) • {s['stopped']} arrêté(s) • {s['other_states']} autre(s)")
     nodes = [n for n in report["nodes"] if node is None or n["name"] == node]
     guests = [g for g in report["guests"] if (node is None or g["node"] == node)
               and (status is None or g["status"] == status)]
     if node or status:
-        print("Filtres d’affichage : nœud=" + safe(node or "tous") + "; état=" + safe(status or "tous"))
-        print("Le rapport JSON conserve l’inventaire complet.")
-    print("\nNŒUDS")
+        print_note("Filtres : nœud=" + (node or "tous") + "; état=" + (status or "tous"))
+        print_note("Le JSON conserve l’inventaire complet.")
+    print_heading("NŒUDS")
     print_table(["NŒUD", "ÉTAT", "CPU", "RAM utilisée", "RAM totale"], [
-        [n["name"], n["status"] or "inconnu", n["cpu_count"] if n["cpu_count"] is not None else "n/d",
+        [n["name"], display_status(n["status"]), n["cpu_count"] if n["cpu_count"] is not None else "n/d",
          gib(n["memory_used_bytes"]), gib(n["memory_total_bytes"])] for n in nodes])
-    print("\nINVITÉS")
-    print_table(["VMID", "TYPE", "NOM", "NŒUD", "ÉTAT", "vCPU", "RAM", "DISQUE déclaré"], [
-        [g["vmid"], g["type"], g["name"] or "n/d", g["node"],
-         "modèle" if g["is_template"] else (g["status"] or "inconnu"),
-         g["vcpu"] if g["vcpu"] is not None else "n/d",
-         gib(g["memory_allocated_bytes"]), gib(g["disk_reported_bytes"])] for g in guests])
+    for name in sorted({g["node"] for g in guests}):
+        print_heading("INVITÉS / " + safe(name))
+        print_table(["ID", "TYPE", "NOM", "ÉTAT", "vCPU", "RAM", "DISQUE*"], [
+            [g["vmid"], g["type"].upper(), g["name"] or "n/d",
+             "modèle" if g["is_template"] else display_status(g["status"]),
+             g["vcpu"] if g["vcpu"] is not None else "n/d",
+             gib(g["memory_allocated_bytes"]), gib(g["disk_reported_bytes"])]
+            for g in guests if g["node"] == name])
+    if not guests:
+        print_heading("INVITÉS")
+        print("  Aucune ressource ne correspond à la sélection.")
+    print_heading("NOTES")
+    print_note("* Disque déclaré par l’API (maxdisk), pas nécessairement le total des disques.")
     for warning in report["warnings"]:
-        print("NOTE : " + safe(warning))
+        print_note(warning, "- ")
 
 
 def read_inventory(path):
@@ -330,23 +371,42 @@ def compare_inventories(before, after):
 
 
 def print_comparison(report):
-    print("COMPARAISON D’INVENTAIRES | " + report["mode"].upper())
-    print(safe(report["before_at"]) + " → " + safe(report["after_at"]))
-    for kind, label in (("nodes", "Nœuds"), ("guests", "Invités")):
+    print_heading("COMPARAISON D’INVENTAIRES / " + report["mode"].upper())
+    print_note("Avant : " + report["before_at"])
+    print_note("Après : " + report["after_at"])
+    print_heading("BILAN")
+    print_table(["RESSOURCES", "VISIBLES +", "ABSENTES", "MODIFIÉES"], [
+        [label, len(report[kind]["added"]), len(report[kind]["removed"]), len(report[kind]["changed"])]
+        for kind, label in (("nodes", "Nœuds"), ("guests", "Invités"))])
+    labels = {"status": "État", "cpu_count": "CPU", "memory_total_bytes": "RAM totale",
+              "name": "Nom", "node": "Nœud", "type": "Type", "is_template": "Modèle",
+              "vcpu": "vCPU", "memory_allocated_bytes": "RAM", "disk_reported_bytes": "Disque"}
+    def value(field, item):
+        if field.endswith("_bytes"):
+            return gib(item)
+        if field == "is_template":
+            return "oui" if item else "non"
+        if field == "status":
+            return display_status(item)
+        return "n/d" if item is None else item
+    for kind, label in (("nodes", "NŒUDS"), ("guests", "INVITÉS")):
         delta = report[kind]
-        print(f"{label} : {len(delta['added'])} nouvellement visible(s), "
-              f"{len(delta['removed'])} absent(s), {len(delta['changed'])} modifié(s)")
+        if not any(delta.values()):
+            continue
+        print_heading(label)
         key = "name" if kind == "nodes" else "vmid"
-        for category in ("added", "removed"):
+        for category, title in (("added", "Nouvellement visible"), ("removed", "Absent")):
             for row in delta[category]:
-                print("  " + ("Visible : " if category == "added" else "Absent : ") + safe(row[key]))
-        for row in delta["changed"]:
-            for field, values in row["changes"].items():
-                print(f"  {safe(row[key])} / {field} : {safe(values['before'])} → {safe(values['after'])}")
+                print_note(title + " : " + str(row[key]))
+        rows = [[row[key], labels.get(field, field), value(field, values["before"]), value(field, values["after"])]
+                for row in delta["changed"] for field, values in row["changes"].items()]
+        if rows:
+            print_table(["RESSOURCE", "CHAMP", "AVANT", "APRÈS"], rows)
     if not report["has_changes"]:
-        print("Aucun changement sur les champs suivis.")
+        print_note("Aucun changement sur les champs suivis.")
+    print_heading("NOTES")
     for warning in report["warnings"]:
-        print("NOTE : " + warning)
+        print_note(warning, "- ")
 
 
 def main(argv=None):
@@ -368,7 +428,8 @@ def main(argv=None):
             comparison = compare_inventories(*(read_inventory(p) for p in args.compare))
             write_report(comparison, output)
             print_comparison(comparison)
-            print("\nRapport JSON : " + safe(output))
+            print_heading("EXPORT")
+            print_note("JSON : " + str(output))
             return 0
         if args.demo:
             try:
@@ -386,7 +447,8 @@ def main(argv=None):
         output = args.output or "reports/inventory.json"
         write_report(report, output)
         print_summary(report, args.node, args.status)
-        print("\nRapport JSON : " + safe(output))
+        print_heading("EXPORT")
+        print_note("JSON : " + str(output))
         return 0
     except InventoryError as exc:
         print("ERREUR : " + str(exc), file=sys.stderr)

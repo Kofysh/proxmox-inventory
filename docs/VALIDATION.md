@@ -10,7 +10,7 @@
 - Les réponses invalides et trop volumineuses sont refusées.
 - Une collecte échouée conserve l’ancien rapport et renvoie un code d’échec.
 
-Ces validations portent sur la logique locale et un transport simulé. Aucun serveur Proxmox réel, compte Paymenter ni paiement n’a été utilisé lors de ces essais. Les exemples sont synthétiques, et non des résultats anonymisés d’un déploiement existant.
+Ces validations portent sur la logique locale et un transport simulé. Ces essais automatisés n’utilisent aucun serveur Proxmox réel, compte Paymenter ni paiement. Une validation réelle distincte est décrite ci-dessous. Les exemples sont synthétiques, et non des résultats anonymisés d’un déploiement existant.
 
 ## Comparaison et filtres
 
@@ -22,7 +22,26 @@ La suite teste les réponses HTTP tronquées et le passage du chemin de l’auto
 
 Le workflow `.github/workflows/tests.yml` lance la suite, le mode démonstration et une comparaison sur Ubuntu et Windows avec Python 3.10, 3.12 et 3.13. Consulter l’onglet Actions pour connaître le résultat de chaque exécution ; l’existence du workflow n’implique pas que toutes les exécutions ont réussi.
 
-## Recette à effectuer sur l’infrastructure personnelle
+## Validation réelle du 13 octobre 2026
+
+La version du commit `a639f491fe2bba210b4e9fccff0ee637d9cf90e5` a été exécutée depuis le serveur Proxmox VE 9.2.21, avec un utilisateur et un jeton temporaires dédiés, le rôle `PVEAuditor` et la séparation des privilèges activée.
+
+| Vérification | Résultat observé |
+|---|---|
+| HTTPS local sur le port 8006 | Réussi avec validation du certificat par l’autorité interne |
+| Lecture des nœuds et conteneurs LXC | Réussie avec le client du projet et les deux routes prévues |
+| Deux collectes et exports JSON | Réussis ; rapports conservés uniquement sur le serveur |
+| Comparaison des collectes | Aucun changement sur les champs suivis |
+| Jeton volontairement invalide | Refus HTTP 401 |
+| Adresse publique depuis le serveur | Échec : résolution interne et connexion refusée sur le port 443 |
+
+Le pilote de recette a appelé le client, la normalisation, l’export et la comparaison du module ; il ne constitue pas une validation de bout en bout de toutes les options CLI. Aucun invité n’a été modifié. Les VM QEMU, les modèles et les changements réels de configuration restent couverts uniquement par les jeux synthétiques. Aucun secret, inventaire réel, nom d’hôte ou adresse réseau de cette infrastructure n’est publié.
+
+La présentation du terminal a été améliorée après cette recette : regroupement par nœud, tableaux adaptés à la largeur, états français, valeurs mémoire en Gio dans les comparaisons. Les 30 tests existants passent ; les rendus de démonstration ont été vérifiés à 60 et 80 colonnes.
+
+## Recette complémentaire à effectuer
+
+Le tableau ci-dessous décrit la recette complète depuis le poste d’exploitation ; les résultats locaux déjà obtenus figurent dans la section précédente.
 
 | Vérification | Critère attendu | État initial |
 |---|---|---|

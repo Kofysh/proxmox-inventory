@@ -26,7 +26,7 @@ Ce dépôt accompagne le **projet 1 de Bachelor 2 à OTERIA**, consacré à une 
 | :--- | :--- | :--- |
 | Nœuds, VM QEMU, conteneurs LXC et modèles | États, vCPU, mémoire et capacité disque déclarée | Rapport JSON horodaté en UTC et résumé dans le terminal |
 
-> **État du projet** — Le mode démonstration et les 30 tests automatisés ont été exécutés avec succès. La connexion à l’infrastructure Proxmox réelle reste à valider.
+> **État du projet** — Le mode démonstration et les 30 tests automatisés ont été exécutés avec succès. Une collecte réelle de conteneurs LXC a également réussi en HTTPS local, avec vérification du certificat et jeton en lecture seule. Voir le périmètre exact dans [Validation](docs/VALIDATION.md).
 
 <a id="demarrage-rapide"></a>
 
@@ -40,7 +40,7 @@ cd proxmox-inventory
 python3 proxmox_inventory.py --demo
 ```
 
-Le dépôt étant privé, son clonage nécessite un accès GitHub autorisé. Il est également possible de télécharger l’archive depuis **Code → Download ZIP** et d’ouvrir un terminal dans le dossier extrait.
+Il est également possible de télécharger l’archive depuis **Code → Download ZIP** et d’ouvrir un terminal dans le dossier extrait.
 
 Sous Windows, utiliser `py -3` à la place de `python3` :
 
@@ -71,9 +71,9 @@ Les modèles sont comptés séparément des invités arrêtés. Une métrique ab
 python3 proxmox_inventory.py --demo --node pve-lab-01 --status running
 ```
 
-Le terminal affiche désormais les nœuds et leurs ressources dans un tableau, puis les invités. `--node` sélectionne un nom de nœud exact ; `--status` accepte `running` ou `stopped` et concerne uniquement les invités. Les modèles sont sélectionnés selon leur état API mais restent identifiés comme modèles.
+Le terminal présente un résumé, les nœuds, puis les invités regroupés par nœud. Les sections sont espacées, les états sont traduits en français et les tableaux s’adaptent à la largeur disponible (40 à 120 colonnes). `--node` sélectionne un nom de nœud exact ; `--status` accepte `running` ou `stopped` et concerne uniquement les invités. Les modèles sont sélectionnés selon leur état API mais restent identifiés comme modèles.
 
-**Les filtres ne modifient pas le JSON exporté.** L’inventaire complet reste disponible pour les comparaisons. Les noms longs sont tronqués à 32 caractères dans le tableau du terminal uniquement.
+**Les filtres ne modifient pas le JSON exporté.** L’inventaire complet reste disponible pour les comparaisons. Les cellules longues passent sur plusieurs lignes. Les notes sont repliées à la largeur du terminal ; aucun code couleur ANSI n’est ajouté aux sorties redirigées.
 
 ## Comparer deux inventaires
 
