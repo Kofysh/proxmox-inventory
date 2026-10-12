@@ -26,7 +26,7 @@ Ce dépôt accompagne le **projet 1 de Bachelor 2 à OTERIA**, consacré à une 
 | :--- | :--- | :--- |
 | Nœuds, VM QEMU, conteneurs LXC et modèles | États, vCPU, mémoire et capacité disque déclarée | Rapport JSON horodaté en UTC et résumé dans le terminal |
 
-> **État du projet** — Le mode démonstration et les 46 tests automatisés ont été exécutés avec succès. Une collecte réelle de conteneurs LXC a également réussi en HTTPS local, avec vérification du certificat et jeton en lecture seule. Voir le périmètre exact dans [Validation](docs/VALIDATION.md).
+> **État du projet** — Le mode démonstration et les 50 tests automatisés ont été exécutés avec succès. Une collecte réelle de conteneurs LXC a également réussi en HTTPS local, avec vérification du certificat et jeton en lecture seule. Voir le périmètre exact dans [Validation](docs/VALIDATION.md).
 
 <a id="demarrage-rapide"></a>
 
@@ -84,7 +84,7 @@ python3 proxmox_inventory.py --demo --color auto
 python3 proxmox_inventory.py --demo --color never
 ```
 
-`--color always` force les couleurs, même dans une redirection. En mode `auto`, les couleurs sont désactivées si la sortie n’est pas un terminal, si `NO_COLOR` est défini ou si `TERM=dumb`. Les JSON restent inchangés. Les dates du terminal sont affichées au format jour/mois/année avec l’heure et le fuseau UTC ; les JSON conservent leurs horodatages ISO.
+`--color always` force les couleurs, même dans une redirection. En mode `auto`, les couleurs sont désactivées si la sortie n’est pas un terminal, si `NO_COLOR` est défini ou si `TERM=dumb`. Les JSON restent inchangés. Les dates du terminal utilisent l’heure de Paris, avec le décalage UTC indiqué et le changement été/hiver automatique. Si la base de fuseaux du système est absente, l’affichage revient explicitement à UTC. Les JSON conservent leurs horodatages ISO en UTC. Pour un inventaire réel, l’ancienneté est calculée au moment de l’affichage ; une date future signale un problème d’horloge. Les compteurs utilisent des pluriels naturels.
 
 ## Conserver un historique et suivre les changements
 
@@ -196,7 +196,7 @@ Les redirections HTTP sont refusées. Le secret du jeton n’est inclus ni dans 
 python3 -m unittest discover -s tests -v
 ```
 
-Les **46 tests** couvrent le comptage des ressources, les données manquantes ou invalides, les erreurs d’authentification et de connexion, les paramètres TLS ainsi que l’écriture du rapport. Le transport réseau est simulé : ces tests ne remplacent pas une recette sur le serveur cible.
+Les **50 tests** couvrent le comptage des ressources, les données manquantes ou invalides, les erreurs d’authentification et de connexion, les paramètres TLS ainsi que l’écriture du rapport. Le transport réseau est simulé : ces tests ne remplacent pas une recette sur le serveur cible.
 
 Le workflow GitHub Actions exécute les tests, la démonstration et la comparaison sous **Linux et Windows**, avec Python **3.10, 3.12 et 3.13**, à chaque push sur `main` et à chaque pull request. Le badge affiche son état réel. Aucun secret Proxmox n’est nécessaire.
 

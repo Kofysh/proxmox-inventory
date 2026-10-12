@@ -1,13 +1,13 @@
 
 Proxmox Inventory
 ────────────────────────────────────────────────────────────────────────────────
-  Lecture seule | 12/10/2026 à 23:33:40 UTC
+  Lecture seule | 13/10/2026 à 01:36:29 (Paris, UTC+02:00)
   Données fictives — aucune connexion à un serveur.
 
 Vue d’ensemble
 ────────────────────────────────────────────────────────────────────────────────
-  1 Nœud(s) • 3 Invité(s) • 1 Modèle(s)
-  2 Actif(s) • 1 Arrêté(s) • 0 Autre(s)
+  1 Nœud • 3 Invités • 1 Modèle
+  2 Actifs • 1 Arrêté • 0 Autre
 
 Nœuds
 ────────────────────────────────────────────────────────────────────────────────

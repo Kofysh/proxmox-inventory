@@ -18,6 +18,7 @@ import sys
 import tempfile
 import uuid
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPSHandler, HTTPRedirectHandler, ProxyHandler, Request, build_opener
@@ -244,9 +245,39 @@ def display_date(value):
         stamp = datetime.fromisoformat(value)
         if stamp.tzinfo is None:
             return safe(value)
-        return stamp.astimezone(timezone.utc).strftime("%d/%m/%Y à %H:%M:%S UTC")
+        try:
+            local = stamp.astimezone(ZoneInfo("Europe/Paris"))
+            offset = local.strftime("%z")
+            return local.strftime("%d/%m/%Y à %H:%M:%S") + f" (Paris, UTC{offset[:3]}:{offset[3:]})"
+        except ZoneInfoNotFoundError:
+            return stamp.astimezone(timezone.utc).strftime("%d/%m/%Y à %H:%M:%S UTC") + " (fuseau Paris indisponible)"
     except (ValueError, TypeError):
         return safe(value)
+
+
+def count_label(count, singular, plural=None):
+    return f"{count} {singular if count in (0, 1) else (plural or singular + 's')}"
+
+
+def report_age(value, now=None):
+    try:
+        stamp = datetime.fromisoformat(value)
+        if stamp.tzinfo is None:
+            return "Ancienneté indisponible : date sans fuseau."
+        seconds = ((now or datetime.now(timezone.utc)) - stamp).total_seconds()
+    except (ValueError, TypeError):
+        return "Ancienneté indisponible."
+    if seconds < 0:
+        return "Date de collecte dans le futur : vérifier les horloges."
+    if seconds < 60:
+        return "Collecté il y a moins d’une minute."
+    if seconds < 3600:
+        age = count_label(int(seconds // 60), "minute")
+    elif seconds < 86400:
+        age = count_label(int(seconds // 3600), "heure")
+    else:
+        age = count_label(int(seconds // 86400), "jour")
+    return "Collecté il y a " + age + "."
 
 
 def terminal_width():
@@ -302,12 +333,16 @@ def display_status(value):
 def print_summary(report, node=None, status=None):
     print_heading("Proxmox Inventory")
     print_note("Lecture seule | " + display_date(report["generated_at"]))
+    if report["mode"] != "demo":
+        print_note(report_age(report["generated_at"]))
     if report["mode"] == "demo":
         print_note("Données fictives — aucune connexion à un serveur.")
     s = report["summary"]
     print_heading("Vue d’ensemble")
-    print_note(f"{s['nodes']} Nœud(s) • {s['guests']} Invité(s) • {s['templates']} Modèle(s)")
-    print_note(f"{s['running']} Actif(s) • {s['stopped']} Arrêté(s) • {s['other_states']} Autre(s)")
+    print_note(" • ".join(count_label(s[key], label) for key, label in
+                          (("nodes", "Nœud"), ("guests", "Invité"), ("templates", "Modèle"))))
+    print_note(" • ".join(count_label(s[key], label) for key, label in
+                          (("running", "Actif"), ("stopped", "Arrêté"), ("other_states", "Autre"))))
     nodes = [n for n in report["nodes"] if node is None or n["name"] == node]
     guests = [g for g in report["guests"] if (node is None or g["node"] == node)
               and (status is None or g["status"] == status)]
@@ -526,7 +561,8 @@ def check_connection(quiet=False):
         print_note("[OK] Données valides ; aucun fichier créé.")
         print_heading("Visibilité")
         summary = report["summary"]
-        print_note(f"{summary['nodes']} nœud(s), {summary['guests']} invité(s), {summary['templates']} modèle(s).")
+        print_note(", ".join(count_label(summary[key], label) for key, label in
+                             (("nodes", "Nœud"), ("guests", "Invité"), ("templates", "Modèle"))))
         for warning in report["warnings"]:
             print_note(warning, "- ")
     return 0
